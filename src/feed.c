@@ -41,6 +41,7 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                       _SITE_TAG_SCHEME_DATE, _SITE_FEED_ID);
 
         for (int i = 0; i < header_arr->len; i++) {
+                // header_arr and content_arr grow together so no additonal checks necessary here
                 page_header header = *header_arr->elems[i];
 
                 size_t created_formatted_size = 256;
@@ -51,11 +52,6 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                 if (header.meta.modified) {
                         ghist_format_ts("%Y-%m-%dT00:00:00Z", modified_formatted,
                                         header.meta.modified);
-                }
-
-                int idx = -1;
-                while (++idx) {
-                        if (content_arr.elems[idx]->meta.path == header.meta.path) break;
                 }
 
                 char *escaped_content = html_escape_content(content_arr.elems[i]->content);
