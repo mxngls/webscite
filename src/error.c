@@ -3,6 +3,7 @@
 const char *get_error_format(site_error_t error) {
         // clang-format off
         switch (error) {
+
 	case SITE_SUCCESS:			return "Success";
 	case SITE_ERROR_FILE_OPEN_READ:		return "Failed to open source %s";
 	case SITE_ERROR_FILE_OPEN_WRITE:	return "Failed to open destination %s";
@@ -26,7 +27,11 @@ const char *get_error_format(site_error_t error) {
 	case SITE_ERROR_NO_PAGES_FOUND:		return "No pages to convert. Aborting";
 	
 	case SITE_ERROR_GIT_OPERATION:		return "Git operation failed";
+
+	case SITE_ERROR_PAGE_NUMBER_EXCEEDED:	return "Number of max. pages exceeded. Increase _SITE_PAGES_ again.";
+
 	default:				return "Unknown error";
+
         }
         // clang-format on
 }

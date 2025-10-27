@@ -317,6 +317,10 @@ int main(void) {
                 }
 
                 page_header *header = NULL;
+                if (header_arr.len >= _SITE_PAGES_MAX) {
+                        ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
+                        goto cleanup;
+                }
                 if ((header = __process_page_file(ftsentp)) == NULL) {
                         res = -1;
                 } else {

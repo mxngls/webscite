@@ -30,7 +30,10 @@ typedef enum {
         SITE_ERROR_NO_PAGES_FOUND,
 
         // Git operations
-        SITE_ERROR_GIT_OPERATION
+        SITE_ERROR_GIT_OPERATION,
+
+        // Bounds error
+        SITE_ERROR_PAGE_NUMBER_EXCEEDED
 } site_error_t;
 
 const char *get_error_format(site_error_t error);
