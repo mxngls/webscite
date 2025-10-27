@@ -9,6 +9,10 @@
 #include "html.h"
 #include "page.h"
 
+#ifndef _SITE_EXT_SOURCE_DIR
+#define _SITE_EXT_SOURCE_DIR "content"
+#endif
+
 #ifndef _SITE_EXT_TARGET_DIR
 #define _SITE_EXT_TARGET_DIR "docs"
 #endif
@@ -274,7 +278,7 @@ int main(void) {
                 goto cleanup;
         }
 
-        if ((ftsp = __init_fts(_SITE_SOURCE_DIR)) == NULL) {
+        if ((ftsp = __init_fts(_SITE_EXT_SOURCE_DIR)) == NULL) {
                 res = -1;
                 goto cleanup;
         }
@@ -332,12 +336,14 @@ int main(void) {
                 }
         }
 
-        if (__process_index_file(_SITE_SOURCE_DIR "/" _SITE_INDEX_PATH, &header_arr) != 0) {
+        if (__process_index_file(_SITE_EXT_SOURCE_DIR "/" _SITE_INDEX_PATH, &header_arr) != 0) {
                 res = -1;
                 goto cleanup;
         }
 
-        if (create_feed(_SITE_EXT_TARGET_DIR "feed.atom", &header_arr) == -1) {
+        if (create_feed(_SITE_EXT_TARGET_DIR "/"
+                                             "feed.atom",
+                        &header_arr) == -1) {
                 res = -1;
                 goto cleanup;
         }

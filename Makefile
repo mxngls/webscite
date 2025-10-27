@@ -2,6 +2,7 @@
 
 SHELL = /bin/sh
 
+_SITE_EXT_SOURCE_DIR ?= content/
 _SITE_EXT_TARGET_DIR ?= docs/
 _SITE_EXT_GIT_DIR ?= .git/
 
@@ -29,6 +30,7 @@ CFLAGS = \
 -Werror \
 -Wpedantic \
 -Wpointer-arith \
+-D_SITE_EXT_SOURCE_DIR=\"$(_SITE_EXT_SOURCE_DIR)\" \
 -D_SITE_EXT_TARGET_DIR=\"$(_SITE_EXT_TARGET_DIR)\" \
 -D_SITE_EXT_GIT_DIR=\"$(_SITE_EXT_GIT_DIR)\" \
 -I$(LIBGIT2_DIR)/include

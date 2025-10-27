@@ -5,8 +5,7 @@
 
 #define _SITE_TITLE "SITE_TITLE"
 
-#define _SITE_SOURCE_DIR            "content"
-#define _SITE_BLOCK_DIR_PATH        _SITE_SOURCE_DIR "/blocks"
+#define _SITE_BLOCK_DIR_PATH        _SITE_EXT_SOURCE_DIR "/blocks"
 #define _SITE_STYLE_SHEET_PATH      "style.css"
 #define _SITE_MENU_STYLE_SHEET_PATH "site-menu.css"
 
