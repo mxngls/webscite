@@ -388,12 +388,6 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
 
 // escape html entities
 char *html_escape_content(char *html_content) {
-        static char *double_quote_escaped = "&quot;";
-        static char *single_quote_escaped = "&#39;";
-        static char *ampersand_escaped = "&amp;";
-        static char *lt_escaped = "&lt;";
-        static char *gt_escaped = "&gt;";
-
         int content_size = 0;
         char *html_content_copy = html_content;
         while (*html_content_copy++) {
@@ -411,27 +405,25 @@ char *html_escape_content(char *html_content) {
         char *pos = escaped;
 
         while (*html_content && escaped_size - (pos - escaped) > 0) {
+                size_t buffer_size = escaped_size - (pos - escaped);
                 switch (*html_content) {
                 case '"':
-                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s",
-                                        double_quote_escaped);
+                        pos += snprintf(pos, buffer_size, "%s", "&quot;");
                         break;
                 case '\'':
-                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s",
-                                        single_quote_escaped);
+                        pos += snprintf(pos, buffer_size, "%s", "&#39;");
                         break;
                 case '&':
-                        pos +=
-                            snprintf(pos, escaped_size - (pos - escaped), "%s", ampersand_escaped);
+                        pos += snprintf(pos, buffer_size, "%s", "&amp;");
                         break;
                 case '<':
-                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s", lt_escaped);
+                        pos += snprintf(pos, buffer_size, "%s", "&lt;");
                         break;
                 case '>':
-                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s", gt_escaped);
+                        pos += snprintf(pos, buffer_size, "%s", "&gt;");
                         break;
                 default:
-                        pos += snprintf(pos, escaped_size - (pos - escaped), "%c", *html_content);
+                        pos += snprintf(pos, buffer_size, "%c", *html_content);
                 }
                 html_content++;
         }
