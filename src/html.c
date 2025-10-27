@@ -139,7 +139,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
         pos += offset;
 
         // separate main content from header group
-        offset = snprintf(pos, buf_size - offset, "%s\n", "<div id=\"post-body\">");
+        offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
         pos += offset;
 
         // add header
@@ -155,7 +155,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
                 *p = (char)toupper((unsigned char)*p);
                 p++;
         }
-        offset = snprintf(pos, buf_size - offset, "<h1>%s</h1>\n", upper);
+        offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", upper);
         free(upper);
         pos += offset;
 
@@ -170,7 +170,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
         }
 
         // close main content
-        offset = snprintf(pos, buf_size - offset, "%s\n", "</div>");
+        offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "</div>");
         pos += offset;
 
         // add updated date at the end if present
@@ -178,7 +178,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
         if (has_modified) {
                 char modified_formatted[256];
                 ghist_format_ts("%Y-%m-%d", modified_formatted, header->meta.modified);
-                offset = snprintf(pos, buf_size - offset,
+                offset = snprintf(pos, buf_size - (pos - buf),
                                   // clang-format off
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
@@ -193,7 +193,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
                                   created_formatted, modified_formatted);
                 pos += offset;
         } else {
-                offset = snprintf(pos, buf_size - offset,
+                offset = snprintf(pos, buf_size - (pos - buf),
                                   // clang-format off
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
