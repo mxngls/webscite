@@ -74,6 +74,8 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                               header.title, escaped_content, header.meta.path, _SITE_HOST,
                               _SITE_TAG_SCHEME_DATE, header.meta.path, created_formatted,
                               modified_formatted);
+
+                free(escaped_content);
         }
 
         res = fprintf(dest_file, "</feed>\n");

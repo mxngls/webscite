@@ -108,6 +108,7 @@ static FTS *__init_fts(char *source) {
 
         if (fts_children(ftsp, 0) == NULL) {
                 printf("No pages to convert. Aborting\n");
+                fts_close(ftsp);
                 return NULL;
         }
 
@@ -180,7 +181,7 @@ static page_header *__process_page_file(FTSENT *ftsentp) {
         };
 
         res = header;
-        header = NULL;
+        header = NULL; // transfer ownership; owner must free
         goto cleanup;
 
 error:
@@ -260,12 +261,12 @@ int main(void) {
 
         if (__create_dir(_SITE_EXT_TARGET_DIR) != 0) {
                 res = -1;
-                return res;
+                goto cleanup;
         }
 
         if (html_init_templates() != 0) {
                 res = -1;
-                return res;
+                goto cleanup;
         }
 
         if (ghist_times()) {
@@ -319,10 +320,12 @@ int main(void) {
                 page_header *header = NULL;
                 if (header_arr.len >= _SITE_PAGES_MAX) {
                         ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
+                        res = -1;
                         goto cleanup;
                 }
                 if ((header = __process_page_file(ftsentp)) == NULL) {
                         res = -1;
+                        goto cleanup;
                 } else {
                         header_arr.elems[header_arr.len] = header;
                         header_arr.len++;
@@ -331,27 +334,38 @@ int main(void) {
 
         if (__process_index_file(_SITE_SOURCE_DIR "/" _SITE_INDEX_PATH, &header_arr) != 0) {
                 res = -1;
+                goto cleanup;
         }
 
         if (create_feed(_SITE_EXT_TARGET_DIR "feed.atom", &header_arr) == 0) {
                 res = -1;
+                goto cleanup;
         }
 
 cleanup:
         // cleanup
         if (ftsp) fts_close(ftsp);
-        // headers
+
+        // headers (header_arr.elem allocated statically
         for (int i = 0; i < header_arr.len; i++) {
                 free((char *)header_arr.elems[i]->title);
                 free((char *)header_arr.elems[i]->subtitle);
                 free(header_arr.elems[i]);
         }
+
+        // page content (content_arr.elem allocated statically
+        for (int i = 0; i < content_arr.len; i++) {
+                free(content_arr.elems[i]->content);
+                free(content_arr.elems[i]);
+        }
+
         // tracked files (renamed files are to be cleaned
         for (int i = 0; i < tracked_arr.len; i++) {
                 free(tracked_arr.files[i].file_path);
         }
         free(tracked_arr.files);
 
+        // cleanup template invocations
         html_cleanup_templates();
 
         return res;

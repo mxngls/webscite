@@ -153,6 +153,7 @@ int ghist_times(void) {
         git_tree *tree = NULL;
         git_tree *parent_tree = NULL;
         git_diff *diff = NULL;
+        git_diff_find_options *find_opts = NULL;
 
         if (git_repository_open(&repo, _SITE_EXT_GIT_DIR) != 0) goto error;
         if (git_revwalk_new(&walker, repo)) goto error;
@@ -180,15 +181,25 @@ int ghist_times(void) {
                 if (git_diff_tree_to_tree(&diff, repo, parent_tree, tree, NULL)) goto error;
 
                 // enable dection of renamed files
-                git_diff_find_options *find_opts = malloc(sizeof(git_diff_find_options));
-                if (git_diff_find_options_init(find_opts, GIT_DIFF_FIND_OPTIONS_VERSION))
+                if (find_opts) {
+                        free(find_opts);
+                }
+                find_opts = malloc(sizeof(git_diff_find_options));
+                if (git_diff_find_options_init(find_opts, GIT_DIFF_FIND_OPTIONS_VERSION)) {
                         goto error;
-                find_opts->flags = GIT_DIFF_FIND_RENAMES | GIT_DIFF_FIND_IGNORE_WHITESPACE;
-                if (git_diff_find_similar(diff, find_opts)) goto error;
+                }
 
-                git_signature *signature = (git_signature *)git_commit_author(commit);
-                if (git_diff_foreach(diff, &__get_times_cb, NULL, NULL, NULL, (void *)signature))
+                find_opts->flags = GIT_DIFF_FIND_RENAMES | GIT_DIFF_FIND_IGNORE_WHITESPACE;
+                // resovle renames, copies etc.
+                if (git_diff_find_similar(diff, find_opts)) {
                         goto error;
+                }
+
+                // iterate over individual diffs
+                git_signature *signature = (git_signature *)git_commit_author(commit);
+                if (git_diff_foreach(diff, &__get_times_cb, NULL, NULL, NULL, (void *)signature)) {
+                        goto error;
+                }
         }
 
         // resolve renames
@@ -218,8 +229,14 @@ cleanup:
         git_commit_free(parent);
         git_tree_free(tree);
         git_tree_free(parent_tree);
+        git_diff_free(diff);
+
+        if (find_opts) {
+                free(find_opts);
+        }
 
         for (int i = 0; i < rename_arr.len; i++) {
+                // Free both old_path and new_path since strdup() created copies
                 free(rename_arr.records[i].old_path);
                 free(rename_arr.records[i].new_path);
         }

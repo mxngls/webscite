@@ -214,7 +214,6 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
         FILE *dest_file = fopen(output_path, "w");
         if (dest_file == NULL) {
                 ERRORF(SITE_ERROR_FILE_CREATE, output_path);
-                free(header);
                 return -1;
         }
 
