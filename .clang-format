@@ -1,0 +1,12 @@
+BasedOnStyle: LLVM
+
+AlignArrayOfStructures: Left
+AlignConsecutiveBitFields: true
+AlignConsecutiveMacros: true
+AlignEscapedNewlines: Right
+AlignOperands: Align
+AlignTrailingComments: true
+ColumnLimit: 100
+IndentWidth: 8
+
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
