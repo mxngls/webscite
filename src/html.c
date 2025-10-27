@@ -129,16 +129,6 @@ static char *__html_create_content(page_header *header, char *page_content) {
                 snprintf(created_formatted, sizeof(created_formatted), "%s", "DRAFT");
         }
 
-        // check for errors
-        if (offset < 0) {
-                ERROR(SITE_ERROR_FILE_WRITE);
-                free(buf);
-                return NULL;
-        }
-
-        pos += offset;
-
-        // separate main content from header group
         offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
         pos += offset;
 
@@ -156,8 +146,8 @@ static char *__html_create_content(page_header *header, char *page_content) {
                 p++;
         }
         offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", upper);
-        free(upper);
         pos += offset;
+        free(upper);
 
         // add content
         char *line = strtok(page_content, "\n");
@@ -398,38 +388,53 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
 
 // escape html entities
 char *html_escape_content(char *html_content) {
+        static char *double_quote_escaped = "&quot;";
+        static char *single_quote_escaped = "&#39;";
+        static char *ampersand_escaped = "&amp;";
+        static char *lt_escaped = "&lt;";
+        static char *gt_escaped = "&gt;";
+
         int content_size = 0;
         char *html_content_copy = html_content;
         while (*html_content_copy++) {
                 content_size++;
         }
 
-        // quiete conservative estimate
+        // conservative estimate of size overhead due to necessary escaping
         unsigned long escaped_size = (unsigned long)(content_size * 2);
         char *escaped = malloc(escaped_size);
+        if (escaped == NULL) {
+                return NULL;
+        }
         escaped[0] = '\0';
 
-        while (*html_content) {
+        char *pos = escaped;
+
+        while (*html_content && escaped_size - (pos - escaped) > 0) {
                 switch (*html_content) {
                 case '"':
-                        strcat(escaped, "&quot;");
+                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s",
+                                        double_quote_escaped);
                         break;
                 case '\'':
-                        strcat(escaped, "&#39;");
+                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s",
+                                        single_quote_escaped);
                         break;
                 case '&':
-                        strcat(escaped, "&amp;");
+                        pos +=
+                            snprintf(pos, escaped_size - (pos - escaped), "%s", ampersand_escaped);
                         break;
                 case '<':
-                        strcat(escaped, "&lt;");
+                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s", lt_escaped);
                         break;
                 case '>':
-                        strcat(escaped, "&gt;");
+                        pos += snprintf(pos, escaped_size - (pos - escaped), "%s", gt_escaped);
                         break;
                 default:
-                        strncat(escaped, html_content, 1);
+                        pos += snprintf(pos, escaped_size - (pos - escaped), "%c", *html_content);
                 }
                 html_content++;
         }
+
         return escaped;
 }

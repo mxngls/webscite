@@ -337,7 +337,7 @@ int main(void) {
                 goto cleanup;
         }
 
-        if (create_feed(_SITE_EXT_TARGET_DIR "feed.atom", &header_arr) == 0) {
+        if (create_feed(_SITE_EXT_TARGET_DIR "feed.atom", &header_arr) == -1) {
                 res = -1;
                 goto cleanup;
         }
