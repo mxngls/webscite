@@ -111,7 +111,7 @@ void html_cleanup_templates(void) {
 // package content
 static char *__html_create_content(page_header *header, char *page_content) {
 
-        size_t buf_size = 24 * 1024;
+        size_t buf_size = 48 * 1024;
         char *buf = NULL;
         if ((buf = malloc(buf_size)) == NULL) {
                 ERROR(SITE_ERROR_MEMORY_ALLOCATION)
