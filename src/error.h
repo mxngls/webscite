@@ -33,7 +33,11 @@ typedef enum {
         SITE_ERROR_GIT_OPERATION,
 
         // Bounds error
-        SITE_ERROR_PAGE_NUMBER_EXCEEDED
+        SITE_ERROR_PAGE_NUMBER_EXCEEDED,
+
+        // Provided source directory doesn't lie inside provided Git directory
+        SITE_ERROR_EXT_DIRS_NONMATCHING,
+        SITE_ERROR_EXT_DIRS_INVALID
 } site_error_t;
 
 const char *get_error_format(site_error_t error);

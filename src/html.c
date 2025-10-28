@@ -252,7 +252,7 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
                 return -1;
         }
         page_content->content = html_content;
-        strcpy(page_content->meta.path, header->meta.path);
+        strncpy(page_content->meta.path, header->meta.path, _SITE_PATH_MAX - 1);
 
         content_arr.elems[content_arr.len] = page_content;
         content_arr.len++;

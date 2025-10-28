@@ -30,6 +30,9 @@ const char *get_error_format(site_error_t error) {
 
 	case SITE_ERROR_PAGE_NUMBER_EXCEEDED:	return "Number of max. pages exceeded. Increase _SITE_PAGES_ again.";
 
+	case SITE_ERROR_EXT_DIRS_NONMATCHING:	return "Provided content directory not tracked by provided Git directory. Aborting.";
+	case SITE_ERROR_EXT_DIRS_INVALID:	return "Provided content directory or Git repository invalid. Aborting.";
+
 	default:				return "Unknown error";
 
         }

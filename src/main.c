@@ -1,6 +1,8 @@
 #include <errno.h>
 #include <fts.h>
 #include <ftw.h>
+#include <libgen.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include "error.h"
@@ -98,6 +100,67 @@ static int __create_dir(char *dir_name) {
         }
 
         return 0;
+}
+
+// verify that _SITE_EXT_SOURCE_DIR belongs to the _SITE_EXT_GIT_DIR
+static char *__validate_ext_dirs(char *git_path, char *source_path) {
+        char *ret = NULL;
+        char *git_path_copy = NULL;
+        char *src_suffix = NULL;
+
+        // obtain absolute paths from given path parameters
+        char *git_absolute_path = realpath(git_path, NULL);
+        char *source_absolute_path = realpath(source_path, NULL);
+        char *source_start = source_absolute_path;
+        if (!git_absolute_path || !source_absolute_path) {
+                ERROR(SITE_ERROR_EXT_DIRS_INVALID);
+                ret = NULL;
+                goto cleanup;
+        }
+
+        if ((git_path_copy = malloc(_SITE_PATH_MAX - 1)) == NULL) {
+                ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+                ret = NULL;
+                goto cleanup;
+        };
+        strncpy(git_path_copy, git_absolute_path, _SITE_PATH_MAX - 1);
+
+        // compare overlapping part of paths
+        char *git_root = dirname(git_path_copy);
+        do {
+                if (*git_root != *source_start) {
+                        ERROR(SITE_ERROR_EXT_DIRS_NONMATCHING);
+                        ret = NULL;
+                        goto cleanup;
+                }
+
+                ++git_root;
+                ++source_start;
+
+        } while (*git_root);
+
+        // check if provided source points to a directory contained inside the repository root
+        if (*git_root == '\0' && *source_start != '/') {
+                ERROR(SITE_ERROR_EXT_DIRS_NONMATCHING);
+                ret = NULL;
+                goto cleanup;
+        }
+
+        if ((src_suffix = malloc(_SITE_PATH_MAX - 1)) == NULL) {
+                ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+                ret = NULL;
+                goto cleanup;
+        };
+        strncpy(src_suffix, source_start + 1, _SITE_PATH_MAX - 1);
+
+        ret = src_suffix;
+
+cleanup:
+        if (git_absolute_path) free(git_absolute_path);
+        if (source_absolute_path) free(source_absolute_path);
+        if (git_path_copy) free(git_path_copy);
+
+        return ret;
 }
 
 static FTS *__init_fts(char *source) {
@@ -263,6 +326,14 @@ int main(void) {
             .len = 0,
         };
 
+        // NOTE: currently unused
+        char *source_path_prefix = NULL;
+        if ((source_path_prefix = __validate_ext_dirs(_SITE_EXT_GIT_DIR, _SITE_EXT_SOURCE_DIR)) ==
+            NULL) {
+                res = -1;
+                goto cleanup;
+        }
+
         if (__create_dir(_SITE_EXT_TARGET_DIR) != 0) {
                 res = -1;
                 goto cleanup;
@@ -351,6 +422,7 @@ int main(void) {
 cleanup:
         // cleanup
         if (ftsp) fts_close(ftsp);
+        if (source_path_prefix) free(source_path_prefix);
 
         // headers (header_arr.elem allocated statically
         for (int i = 0; i < header_arr.len; i++) {
