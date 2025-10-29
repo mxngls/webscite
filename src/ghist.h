@@ -17,9 +17,14 @@ typedef struct {
 
 extern tracked_file_arr tracked_arr;
 
+typedef struct {
+        git_signature *signature;
+        char *path_prefix;
+} diff_cb_payload;
+
 // obtain modification and creation times
-int ghist_times(void);
-void ghist_format_ts(char *, char *, time_t timestamp);
+int ghist_times(char *);
+void ghist_format_ts(char *, char *, time_t);
 
 // match tracked files and files residing in the working dir
 tracked_file *ghist_find_by_path(char *);

@@ -6,6 +6,7 @@
 
 #include "error.h"
 #include "ghist.h"
+#include "page.h"
 
 typedef struct {
         char *old_path;
@@ -66,6 +67,8 @@ static int __get_times_cb(const git_diff_delta *delta, __attribute__((unused)) f
                           void *payload) {
         if (!delta || !delta->new_file.path) return 0;
 
+        diff_cb_payload *cb_payload = (diff_cb_payload *)payload;
+
         // ensure array capacity
         if (tracked_arr.files == NULL) {
                 tracked_arr.files = malloc(sizeof(tracked_file) * 100);
@@ -77,10 +80,14 @@ static int __get_times_cb(const git_diff_delta *delta, __attribute__((unused)) f
                 if (!tracked_arr.files) return -1;
         }
 
-        char *file_path = (char *)delta->new_file.path;
-        char *old_file_path = (char *)delta->old_file.path;
+        char file_path[_SITE_PATH_MAX] = {'\0'};
+        char old_file_path[_SITE_PATH_MAX] = {'\0'};
+        snprintf(file_path, sizeof(file_path), "%s%s", cb_payload->path_prefix,
+                 delta->new_file.path);
+        snprintf(old_file_path, sizeof(old_file_path), "%s%s", cb_payload->path_prefix,
+                 delta->old_file.path);
 
-        git_signature *signature = (git_signature *)payload;
+        git_signature *signature = cb_payload->signature;
         git_time_t author_time = signature->when.time;
 
         // rename detected
@@ -140,7 +147,7 @@ tracked_file *ghist_find_by_path(char *file_path) {
         return NULL;
 }
 
-int ghist_times(void) {
+int ghist_times(char *path_prefix) {
         int res = 0;
 
         git_libgit2_init();
@@ -177,7 +184,7 @@ int ghist_times(void) {
 
                 int parent_count = git_commit_parentcount(commit);
 
-                // Skip merge commits ...
+                // skip merge commits ...
                 if (parent_count > 1) {
                         continue;
                 } // ... but process root commits
@@ -203,7 +210,9 @@ int ghist_times(void) {
 
                 // iterate over individual diffs
                 git_signature *signature = (git_signature *)git_commit_author(commit);
-                if (git_diff_foreach(diff, &__get_times_cb, NULL, NULL, NULL, (void *)signature)) {
+                if (git_diff_foreach(diff, &__get_times_cb, NULL, NULL, NULL,
+                                     (void *)&(diff_cb_payload){.signature = signature,
+                                                                .path_prefix = path_prefix})) {
                         goto error;
                 }
         }

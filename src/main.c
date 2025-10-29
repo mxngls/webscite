@@ -46,6 +46,8 @@ tracked_file_arr tracked_arr = {
 static int __copy_file(char *, char *);
 static FTS *__init_fts(char *);
 static int __create_dir(char *);
+static int __validate_ext_dirs(char *, char *);
+static char *__extract_ext_prefix(char *);
 
 // main routines
 static page_header *__process_page_file(FTSENT *);
@@ -103,10 +105,10 @@ static int __create_dir(char *dir_name) {
 }
 
 // verify that _SITE_EXT_SOURCE_DIR belongs to the _SITE_EXT_GIT_DIR
-static char *__validate_ext_dirs(char *git_path, char *source_path) {
-        char *ret = NULL;
+static int __validate_ext_dirs(char *git_path, char *source_path) {
+        int res = 0;
+
         char *git_path_copy = NULL;
-        char *src_suffix = NULL;
 
         // obtain absolute paths from given path parameters
         char *git_absolute_path = realpath(git_path, NULL);
@@ -114,13 +116,13 @@ static char *__validate_ext_dirs(char *git_path, char *source_path) {
         char *source_start = source_absolute_path;
         if (!git_absolute_path || !source_absolute_path) {
                 ERROR(SITE_ERROR_EXT_DIRS_INVALID);
-                ret = NULL;
+                res = -1;
                 goto cleanup;
         }
 
         if ((git_path_copy = malloc(_SITE_PATH_MAX - 1)) == NULL) {
                 ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-                ret = NULL;
+                res = -1;
                 goto cleanup;
         };
         strncpy(git_path_copy, git_absolute_path, _SITE_PATH_MAX - 1);
@@ -130,7 +132,7 @@ static char *__validate_ext_dirs(char *git_path, char *source_path) {
         do {
                 if (*git_root != *source_start) {
                         ERROR(SITE_ERROR_EXT_DIRS_NONMATCHING);
-                        ret = NULL;
+                        res = -1;
                         goto cleanup;
                 }
 
@@ -142,23 +144,46 @@ static char *__validate_ext_dirs(char *git_path, char *source_path) {
         // check if provided source points to a directory contained inside the repository root
         if (*git_root == '\0' && *source_start != '/') {
                 ERROR(SITE_ERROR_EXT_DIRS_NONMATCHING);
-                ret = NULL;
+                res = -1;
                 goto cleanup;
         }
-
-        if ((src_suffix = malloc(_SITE_PATH_MAX - 1)) == NULL) {
-                ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-                ret = NULL;
-                goto cleanup;
-        };
-        strncpy(src_suffix, source_start + 1, _SITE_PATH_MAX - 1);
-
-        ret = src_suffix;
 
 cleanup:
         if (git_absolute_path) free(git_absolute_path);
         if (source_absolute_path) free(source_absolute_path);
         if (git_path_copy) free(git_path_copy);
+
+        return res;
+}
+
+static char *__extract_ext_prefix(char *ext_path) {
+        char *ret = NULL;
+
+        char *ext_path_copy = strdup(ext_path);
+
+        // strip trailing slashes
+        size_t len = strlen(ext_path_copy);
+        while (len > 0 && ext_path_copy[len - 1] == '/') {
+                ext_path_copy[len - 1] = '\0';
+                len--;
+        }
+
+        char *last_slash = strrchr(ext_path_copy, '/');
+
+        if (last_slash && last_slash != ext_path_copy) {
+                size_t prefix_len = (size_t)(last_slash - ext_path_copy) + 1;
+                char *path_prefix = NULL;
+                if ((path_prefix = malloc(prefix_len + 1)) == NULL) {
+                        ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+                        ret = NULL;
+                        return ret;
+                };
+                strncpy(path_prefix, ext_path_copy, prefix_len);
+                path_prefix[prefix_len] = '\0';
+                ret = path_prefix;
+        } else {
+                ret = strdup("");
+        }
 
         return ret;
 }
@@ -320,16 +345,19 @@ int main(void) {
         int res = 0;
         FTS *ftsp = NULL;
         FTSENT *ftsentp = NULL;
+        char *path_prefix = NULL;
 
         page_header_arr header_arr = {
             .elems = {0},
             .len = 0,
         };
 
-        // NOTE: currently unused
-        char *source_path_prefix = NULL;
-        if ((source_path_prefix = __validate_ext_dirs(_SITE_EXT_GIT_DIR, _SITE_EXT_SOURCE_DIR)) ==
-            NULL) {
+        if (__validate_ext_dirs(_SITE_EXT_GIT_DIR, _SITE_EXT_SOURCE_DIR) != 0) {
+                res = -1;
+                goto cleanup;
+        }
+
+        if ((path_prefix = __extract_ext_prefix(_SITE_EXT_GIT_DIR)) == NULL) {
                 res = -1;
                 goto cleanup;
         }
@@ -344,7 +372,7 @@ int main(void) {
                 goto cleanup;
         }
 
-        if (ghist_times()) {
+        if (ghist_times(path_prefix)) {
                 res = -1;
                 goto cleanup;
         }
@@ -422,7 +450,7 @@ int main(void) {
 cleanup:
         // cleanup
         if (ftsp) fts_close(ftsp);
-        if (source_path_prefix) free(source_path_prefix);
+        if (path_prefix) free(path_prefix);
 
         // headers (header_arr.elem allocated statically
         for (int i = 0; i < header_arr.len; i++) {
