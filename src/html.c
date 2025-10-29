@@ -121,12 +121,14 @@ static char *__html_create_content(page_header *header, char *page_content) {
         char *pos = buf;
         int offset = 0;
 
-        size_t created_formatted_size = 256;
-        char created_formatted[created_formatted_size];
+        char created_date[256];
+        char created_formatted_date[256];
         if (header->meta.created) {
-                ghist_format_ts("%Y-%m-%d", created_formatted, header->meta.created);
+                ghist_format_ts("%Y-%m-%d", created_date, header->meta.created);
+                snprintf(created_formatted_date, sizeof(created_formatted_date), "Created on %s",
+                         created_date);
         } else {
-                snprintf(created_formatted, sizeof(created_formatted), "%s", "DRAFT");
+                snprintf(created_formatted_date, sizeof(created_formatted_date), "%s", "DRAFT");
         }
 
         offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
@@ -166,32 +168,35 @@ static char *__html_create_content(page_header *header, char *page_content) {
         // add updated date at the end if present
         int has_modified = header->meta.modified != 0;
         if (has_modified) {
-                char modified_formatted[256];
-                ghist_format_ts("%Y-%m-%d", modified_formatted, header->meta.modified);
+                char modified_date[256];
+                char modified_formatted_date[256];
+                ghist_format_ts("%Y-%m-%d", modified_date, header->meta.modified);
+                snprintf(modified_formatted_date, sizeof(modified_formatted_date),
+                         "Last updated on %s", modified_date);
                 offset = snprintf(pos, buf_size - (pos - buf),
                                   // clang-format off
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
-                                          "<small>Created on %s</small>\n"
+                                          "<small>%s</small>\n"
                                       "</div>\n"
 				      "|\n"
                                       "<div id=\"date-updated\">\n"
-                                          "<small>Last Updated on %s</small>\n"
+                                          "<small>%s</small>\n"
                                       "</div>\n"
                                   "</div>\n",
                                   // clang-format on
-                                  created_formatted, modified_formatted);
+                                  created_formatted_date, modified_formatted_date);
                 pos += offset;
         } else {
                 offset = snprintf(pos, buf_size - (pos - buf),
                                   // clang-format off
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
-                                          "<small>Created on %s</small>\n"
+                                          "<small>%s</small>\n"
                                       "</div>\n"
                                   "</div>\n",
                                   // clang-format on
-                                  created_formatted);
+                                  created_formatted_date);
                 pos += offset;
         }
 
@@ -342,13 +347,11 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
                                 skip = true;
                 }
                 if (skip) continue;
-                size_t created_formatted_size = 256;
-                char created_formatted[created_formatted_size];
+                char created_date[256];
                 if (header_arr->elems[i]->meta.created) {
-                        ghist_format_ts("%Y", created_formatted,
-                                        header_arr->elems[i]->meta.created);
+                        ghist_format_ts("%Y", created_date, header_arr->elems[i]->meta.created);
                 } else {
-                        snprintf(created_formatted, sizeof(created_formatted), "%s", "DRAFT");
+                        snprintf(created_date, sizeof(created_date), "%s", "DRAFT");
                 }
 
                 fprintf_ret = fprintf(dest_file,
@@ -360,7 +363,7 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
                     		          "</a>\n"
                     		      "</li>\n",
                                       // clang-format on
-                                      created_formatted, header_arr->elems[i]->meta.path,
+                                      created_date, header_arr->elems[i]->meta.path,
                                       header_arr->elems[i]->title);
         }
 
