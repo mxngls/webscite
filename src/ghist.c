@@ -168,7 +168,7 @@ int ghist_times(void) {
                 if (tree) { git_tree_free(tree); tree = NULL; }
                 if (parent_tree) { git_tree_free(parent_tree); parent_tree = NULL; }
                 if (diff) { git_diff_free(diff); diff = NULL; }
-                if (find_opts) { free(find_opts); }
+                if (find_opts) { free(find_opts); find_opts = NULL; }
                 // clang-format on
 
                 if (git_commit_lookup(&commit, repo, &oid)) goto error;
