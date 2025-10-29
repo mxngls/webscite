@@ -168,28 +168,34 @@ int ghist_times(void) {
                 if (tree) { git_tree_free(tree); tree = NULL; }
                 if (parent_tree) { git_tree_free(parent_tree); parent_tree = NULL; }
                 if (diff) { git_diff_free(diff); diff = NULL; }
+                if (find_opts) { free(find_opts); }
                 // clang-format on
 
                 if (git_commit_lookup(&commit, repo, &oid)) goto error;
 
-                int parent_count = git_commit_parentcount(commit);
-                if (parent_count != 1) continue;
-
-                if (git_commit_parent(&parent, commit, 0)) goto error;
                 if (git_commit_tree(&tree, commit)) goto error;
-                if (git_commit_tree(&parent_tree, parent)) goto error;
+
+                int parent_count = git_commit_parentcount(commit);
+
+                // Skip merge commits ...
+                if (parent_count > 1) {
+                        continue;
+                } // ... but process root commits
+                else if (parent_count == 1) {
+                        if (git_commit_parent(&parent, commit, 0)) goto error;
+                        if (git_commit_tree(&parent_tree, parent)) goto error;
+                }
+
                 if (git_diff_tree_to_tree(&diff, repo, parent_tree, tree, NULL)) goto error;
 
-                // enable dection of renamed files
-                if (find_opts) {
-                        free(find_opts);
-                }
                 find_opts = malloc(sizeof(git_diff_find_options));
                 if (git_diff_find_options_init(find_opts, GIT_DIFF_FIND_OPTIONS_VERSION)) {
                         goto error;
                 }
 
+                // enable dection of renamed files and ignore whitespace changes
                 find_opts->flags = GIT_DIFF_FIND_RENAMES | GIT_DIFF_FIND_IGNORE_WHITESPACE;
+
                 // resovle renames, copies etc.
                 if (git_diff_find_similar(diff, find_opts)) {
                         goto error;
@@ -225,10 +231,13 @@ error:
 cleanup:
         git_repository_free(repo);
         git_revwalk_free(walker);
+
         git_commit_free(commit);
-        git_commit_free(parent);
         git_tree_free(tree);
-        git_tree_free(parent_tree);
+
+        if (parent) git_commit_free(parent);
+        if (parent_tree) git_tree_free(parent_tree);
+
         git_diff_free(diff);
 
         if (find_opts) {
