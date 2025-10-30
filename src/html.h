@@ -12,7 +12,7 @@
 #define _SITE_MENU_STYLE_SHEET_PATH "site-menu.css"
 
 // clang-format off
-#define _SITE_HTML_FONT                                                                            \
+#define _SITE_HTML_FONT \
 	"<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n" \
 	"<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n" \
 	"<link href=\"https://fonts.googleapis.com/css2?family=Inconsolata:wdth,wght@95.3,200..900&family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap\" rel=\"stylesheet\">\n"
