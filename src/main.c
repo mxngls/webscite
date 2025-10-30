@@ -48,9 +48,10 @@ static FTS *__init_fts(char *);
 static int __create_dir(char *);
 static int __validate_ext_dirs(char *, char *);
 static char *__extract_ext_prefix(char *);
+static char *__extract_dir(char *);
 
 // main routines
-static page_header *__process_page_file(FTSENT *);
+static page_header *__process_page_file(FTSENT *, char *);
 static int __process_index_file(char *, page_header_arr *);
 
 static int __copy_file(char *from, char *to) {
@@ -157,7 +158,7 @@ cleanup:
 }
 
 static char *__extract_ext_prefix(char *ext_path) {
-        char *ret = NULL;
+        char *prefix = NULL;
 
         char *ext_path_copy = strdup(ext_path);
 
@@ -175,17 +176,40 @@ static char *__extract_ext_prefix(char *ext_path) {
                 char *path_prefix = NULL;
                 if ((path_prefix = malloc(prefix_len + 1)) == NULL) {
                         ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-                        ret = NULL;
-                        return ret;
+                        prefix = NULL;
+                        return prefix;
                 };
                 strncpy(path_prefix, ext_path_copy, prefix_len);
                 path_prefix[prefix_len] = '\0';
-                ret = path_prefix;
+                prefix = path_prefix;
         } else {
-                ret = strdup("");
+                prefix = strdup("");
         }
 
-        return ret;
+        free(ext_path_copy);
+
+        return prefix;
+}
+
+static char *__extract_dir(char *path) {
+        char *dir = NULL;
+
+        char *path_copy = strdup(path);
+        char *parent_dir = dirname(path_copy);
+        char *source_dir = strstr(parent_dir, _SITE_EXT_SOURCE_DIR);
+
+        if (!source_dir) {
+                free(path_copy);
+                dir = strdup("");
+                return dir;
+        }
+        char *curr_dir = source_dir + strlen(_SITE_EXT_SOURCE_DIR);
+
+        dir = strdup(curr_dir);
+
+        free(path_copy);
+
+        return dir;
 }
 
 static FTS *__init_fts(char *source) {
@@ -207,7 +231,7 @@ static FTS *__init_fts(char *source) {
         return ftsp;
 }
 
-static page_header *__process_page_file(FTSENT *ftsentp) {
+static page_header *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
         page_header *res = NULL;
         char *source_path = ftsentp->fts_path;
         FILE *source_file = NULL;
@@ -227,14 +251,23 @@ static page_header *__process_page_file(FTSENT *ftsentp) {
 
         // output path
         char page_path[_SITE_PATH_MAX];
-        snprintf(page_path, sizeof(page_path), "%s/%s", _SITE_EXT_TARGET_DIR, page_name);
+        if (curr_dir[0] == '\0') {
+                snprintf(page_path, sizeof(page_path), "%s/%s", _SITE_EXT_TARGET_DIR, page_name);
+        } else {
+                snprintf(page_path, sizeof(page_path), "%s/%s/%s", _SITE_EXT_TARGET_DIR, curr_dir,
+                         page_name);
+        }
 
         if ((header = calloc(1, sizeof(page_header))) == NULL) {
                 ERROR(SITE_ERROR_MEMORY_ALLOCATION);
                 goto error;
         }
-        char page_href[100] = "/";
-        strcat(page_href, page_name);
+        char page_href[100];
+        if (curr_dir[0] == '\0') {
+                snprintf(page_href, sizeof(page_href), "/%s", page_name);
+        } else {
+                snprintf(page_href, sizeof(page_href), "%s/%s", curr_dir, page_name);
+        }
         strncpy(header->meta.path, page_href, _SITE_PATH_MAX - 1);
 
         if ((tracked = ghist_find_by_path(source_path))) {
@@ -382,56 +415,83 @@ int main(void) {
                 goto cleanup;
         }
 
+        char curr_dir[PATH_MAX] = "\0";
+
         while ((ftsentp = fts_read(ftsp)) != NULL) {
-                // only process files at the top level
-                if (ftsentp->fts_level > 1) continue;
-
-                // we only care for plain non-hidden __files__
-                if (ftsentp->fts_info != FTS_F) continue;
-                if (ftsentp->fts_name[0] == '.') continue;
-
-                char *dot = strrchr(ftsentp->fts_name, '.');
-                if (dot == NULL) continue;
-                char *ext = dot + 1;
-
-                // non-html files
-                if (strcmp(ext, "htm") != 0) {
-                        char to_path[_SITE_PATH_MAX];
-                        to_path[0] = '\0';
-
-                        strlcat(to_path, _SITE_EXT_TARGET_DIR, sizeof(to_path));
-                        size_t path_len = strlen(to_path);
-
-                        // possibly add path separator
-                        if (path_len > 0 && to_path[path_len - 1] != '/' &&
-                            path_len + 1 < sizeof(to_path)) {
-                                to_path[path_len] = '/';
-                                to_path[path_len + 1] = '\0';
+                if (ftsentp->fts_info == FTS_D) {
+                        // skip blocks
+                        if (ftsentp->fts_level == 1 && strcmp(ftsentp->fts_name, "blocks") == 0) {
+                                continue;
                         }
 
-                        strlcat(to_path, ftsentp->fts_name, sizeof(to_path));
+                        // obtain current directory
+                        char *dir = __extract_dir(ftsentp->fts_path);
+                        snprintf(curr_dir, PATH_MAX, "%s", dir);
+
+                        // create current directory if it doesn't exist yet
+                        char target_dir[PATH_MAX];
+                        if (curr_dir[0] == '\0') {
+                                snprintf(target_dir, PATH_MAX, "%s", _SITE_EXT_TARGET_DIR);
+                        } else {
+                                snprintf(target_dir, PATH_MAX, "%s/%s", _SITE_EXT_TARGET_DIR,
+                                         curr_dir);
+                        }
+
+                        if (__create_dir(target_dir) != 0) {
+                                res = -1;
+                                goto cleanup;
+                        }
+
+                        free(dir);
+
+                } else if (ftsentp->fts_info != FTS_F && ftsentp->fts_name[0] == '.') {
+                        // we only care for non-hidden files and directories
+                        continue;
+                }
+
+                char *dot = strrchr(ftsentp->fts_name, '.');
+                if (!dot) continue;
+
+                bool has_ext_htm = strcmp(dot + 1, "htm") == 0;
+
+                if (!has_ext_htm) { // non-posts
+
+                        char to_path[_SITE_PATH_MAX];
+                        if (curr_dir[0] == '\0') {
+                                snprintf(to_path, sizeof(to_path), "%s/%s", _SITE_EXT_TARGET_DIR,
+                                         ftsentp->fts_name);
+                        } else {
+                                snprintf(to_path, sizeof(to_path), "%s/%s/%s", _SITE_EXT_TARGET_DIR,
+                                         curr_dir, ftsentp->fts_name);
+                        }
 
                         __copy_file(ftsentp->fts_path, to_path);
-                        continue;
-                }
+                } else { // posts
 
-                // ignore index for now
-                if (strcmp(ftsentp->fts_name, _SITE_INDEX_PATH) == 0) {
-                        continue;
-                }
+                        // skip blocks
+                        if (strcmp(ftsentp->fts_parent->fts_name, "blocks") == 0) {
+                                continue;
+                        }
 
-                page_header *header = NULL;
-                if (header_arr.len >= _SITE_PAGES_MAX) {
-                        ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
-                        res = -1;
-                        goto cleanup;
-                }
-                if ((header = __process_page_file(ftsentp)) == NULL) {
-                        res = -1;
-                        goto cleanup;
-                } else {
-                        header_arr.elems[header_arr.len] = header;
-                        header_arr.len++;
+                        // ignore index for now
+                        if (strcmp(ftsentp->fts_name, _SITE_INDEX_PATH) == 0) {
+                                continue;
+                        }
+
+                        page_header *header = NULL;
+                        if (header_arr.len >= _SITE_PAGES_MAX) {
+                                ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
+                                res = -1;
+                                goto cleanup;
+                        }
+
+                        if ((header = __process_page_file(ftsentp, curr_dir)) == NULL) {
+                                res = -1;
+                                goto cleanup;
+                        } else {
+                                header_arr.elems[header_arr.len] = header;
+                                header_arr.len++;
+                        }
                 }
         }
 
