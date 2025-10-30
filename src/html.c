@@ -320,7 +320,7 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
 	    "            %s\n"
             "            <main>\n",
             // clang-format on
-            _SITE_STYLE_SHEET_PATH, _SITE_MENU_STYLE_SHEET_PATH, _SITE_TITLE, _SITE_SCRIPT,
+            _SITE_STYLE_SHEET_PATH, _SITE_MENU_STYLE_SHEET_PATH, _SITE_EXT_TITLE, _SITE_SCRIPT,
             site_menu);
 
         // content

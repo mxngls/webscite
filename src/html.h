@@ -3,7 +3,9 @@
 
 #include "page.h"
 
-#define _SITE_TITLE "SITE_TITLE"
+#ifndef _SITE_EXT_TITLE
+#define _SITE_EXT_TITLE "SITE_TITLE"
+#endif
 
 #define _SITE_BLOCK_DIR_PATH        _SITE_EXT_SOURCE_DIR "/blocks"
 #define _SITE_STYLE_SHEET_PATH      "style.css"

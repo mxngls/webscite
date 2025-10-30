@@ -34,7 +34,7 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                       "    <author>\n"
                       "        <name>%s</name>\n"
                       "    </author>\n",
-                      _SITE_TITLE, _SITE_URL, feed_uri, feed_modified, _SITE_AUTHOR);
+                      _SITE_EXT_TITLE, _SITE_URL, feed_uri, feed_modified, _SITE_AUTHOR);
 
         // use date-only format for TAG URI
         res = fprintf(dest_file, "    <id>tag:www.%s,%s:%s</id>\n", _SITE_HOST,
