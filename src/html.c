@@ -128,7 +128,8 @@ static char *__html_create_content(page_header *header, char *page_content) {
                 snprintf(created_formatted_date, sizeof(created_formatted_date), "Created on %s",
                          created_date);
         } else {
-                snprintf(created_formatted_date, sizeof(created_formatted_date), "%s", "DRAFT");
+                snprintf(created_formatted_date, sizeof(created_formatted_date), "%s",
+                         "<span class=\"draft\">DRAFT</span>");
         }
 
         offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
@@ -351,7 +352,8 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
                 if (header_arr->elems[i]->meta.created) {
                         ghist_format_ts("%Y", created_date, header_arr->elems[i]->meta.created);
                 } else {
-                        snprintf(created_date, sizeof(created_date), "%s", "DRAFT");
+                        snprintf(created_date, sizeof(created_date), "%s",
+                                 "<span class=\"draft\">DRAFT</span>");
                 }
 
                 fprintf_ret = fprintf(dest_file,
