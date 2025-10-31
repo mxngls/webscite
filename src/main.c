@@ -203,7 +203,13 @@ static char *__extract_dir(char *path) {
                 dir = strdup("");
                 return dir;
         }
+
         char *curr_dir = source_dir + strlen(_SITE_EXT_SOURCE_DIR);
+
+        // skip leading slash
+        if (curr_dir[0] == '/') {
+                curr_dir++;
+        }
 
         dir = strdup(curr_dir);
 
