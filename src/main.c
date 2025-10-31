@@ -48,7 +48,7 @@ static FTS *__init_fts(char *);
 static int __create_dir(char *);
 static int __validate_ext_dirs(char *, char *);
 static char *__extract_ext_prefix(char *);
-static char *__extract_dir(char *);
+static char *__extract_dir(char *, bool);
 
 // main routines
 static page_header *__process_page_file(FTSENT *, char *);
@@ -191,12 +191,19 @@ static char *__extract_ext_prefix(char *ext_path) {
         return prefix;
 }
 
-static char *__extract_dir(char *path) {
+static char *__extract_dir(char *path, bool is_dir) {
         char *dir = NULL;
+        char *parent_dir;
+        char *source_dir;
 
         char *path_copy = strdup(path);
-        char *parent_dir = dirname(path_copy);
-        char *source_dir = strstr(parent_dir, _SITE_EXT_SOURCE_DIR);
+
+        if (is_dir) {
+                source_dir = strstr(path_copy, _SITE_EXT_SOURCE_DIR);
+        } else {
+                parent_dir = dirname(path_copy);
+                source_dir = strstr(parent_dir, _SITE_EXT_SOURCE_DIR);
+        }
 
         if (!source_dir) {
                 free(path_copy);
@@ -422,26 +429,30 @@ int main(void) {
         }
 
         char curr_dir[PATH_MAX] = "\0";
+        int curr_fts_level = 0;
 
         while ((ftsentp = fts_read(ftsp)) != NULL) {
+                if (curr_fts_level != ftsentp->fts_level) {
+                        // update current directory
+                        char *dir = __extract_dir(ftsentp->fts_path, false);
+                        snprintf(curr_dir, PATH_MAX, "%s", dir);
+
+                        free(dir);
+                        curr_fts_level = ftsentp->fts_level;
+                }
+
                 if (ftsentp->fts_info == FTS_D) {
                         // skip blocks
                         if (ftsentp->fts_level == 1 && strcmp(ftsentp->fts_name, "blocks") == 0) {
                                 continue;
                         }
 
-                        // obtain current directory
-                        char *dir = __extract_dir(ftsentp->fts_path);
-                        snprintf(curr_dir, PATH_MAX, "%s", dir);
+                        // obtain directory
+                        char *dir = __extract_dir(ftsentp->fts_path, true);
 
                         // create current directory if it doesn't exist yet
                         char target_dir[PATH_MAX];
-                        if (curr_dir[0] == '\0') {
-                                snprintf(target_dir, PATH_MAX, "%s", _SITE_EXT_TARGET_DIR);
-                        } else {
-                                snprintf(target_dir, PATH_MAX, "%s/%s", _SITE_EXT_TARGET_DIR,
-                                         curr_dir);
-                        }
+                        snprintf(target_dir, PATH_MAX, "%s/%s", _SITE_EXT_TARGET_DIR, dir);
 
                         if (__create_dir(target_dir) != 0) {
                                 res = -1;
