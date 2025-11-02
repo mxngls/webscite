@@ -490,6 +490,11 @@ int main(void) {
                                 continue;
                         }
 
+                        // skip drafts
+                        if (strcmp(ftsentp->fts_parent->fts_name, "drafts") == 0) {
+                                continue;
+                        }
+
                         // ignore index for now
                         if (strcmp(ftsentp->fts_name, _SITE_INDEX_PATH) == 0) {
                                 continue;
