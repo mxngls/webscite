@@ -51,7 +51,7 @@ static char *__extract_ext_prefix(char *);
 static char *__extract_dir(char *, bool);
 
 // main routines
-static page_header *__process_page_file(FTSENT *, char *);
+static page_result *__process_page_file(FTSENT *, char *);
 static int __process_index_file(char *, page_header_arr *);
 
 static int __copy_file(char *from, char *to) {
@@ -244,13 +244,23 @@ static FTS *__init_fts(char *source) {
         return ftsp;
 }
 
-static page_header *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
-        page_header *res = NULL;
+static page_result *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
+        page_result *res = NULL;
+
+        if ((res = malloc(sizeof(page_result))) == NULL) {
+                ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+                return NULL;
+        }
+        res->header = NULL;
+        res->content = NULL;
+
         char *source_path = ftsentp->fts_path;
         FILE *source_file = NULL;
+
         tracked_file *tracked = NULL;
+
         page_header *header = NULL;
-        char *page_content = NULL;
+        char *content = NULL;
 
         if ((source_file = fopen(ftsentp->fts_path, "r")) == NULL) {
                 ERRORF(SITE_ERROR_FILE_READ, source_path);
@@ -271,10 +281,12 @@ static page_header *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
                          page_name);
         }
 
+        // handle page headers
         if ((header = calloc(1, sizeof(page_header))) == NULL) {
                 ERROR(SITE_ERROR_MEMORY_ALLOCATION);
                 goto error;
         }
+        // populate page metadata
         char page_href[100];
         if (curr_dir[0] == '\0') {
                 snprintf(page_href, sizeof(page_href), "/%s", page_name);
@@ -282,53 +294,52 @@ static page_header *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
                 snprintf(page_href, sizeof(page_href), "%s/%s", curr_dir, page_name);
         }
         strncpy(header->meta.path, page_href, _SITE_PATH_MAX - 1);
-
         if ((tracked = ghist_find_by_path(source_path))) {
                 header->meta.created = tracked->creat_time;
                 header->meta.modified = tracked->mod_time;
         }
-
-        // read content
+        // parse page header
         int header_len = -1;
         if ((header_len = page_parse_header(source_file, header)) == -1) {
                 ERRORF(SITE_ERROR_MISSING_HEADERS, source_path);
                 goto error;
         };
+
+        // parse page content                                                       }
         size_t content_size = ftsentp->fts_statp->st_size - header_len;
-        page_content = malloc(content_size + 1);
-        if (page_content == NULL) {
+        content = malloc(content_size + 1);
+        if (content == NULL) {
                 ERROR(SITE_ERROR_MEMORY_ALLOCATION);
                 goto error;
         }
-        size_t bytes_read = fread(page_content, 1, content_size, source_file);
-        if (bytes_read != content_size) {
-                if (feof(source_file)) {
-                        printf("Page has no content. Aborting.\n");
-                } else if (ferror(source_file)) {
-                        ERRORF(SITE_ERROR_FILE_READ, source_path);
-                } else {
-                        ERRORF(SITE_ERROR_UNEXPECTED_EOF, source_path);
-                }
-                goto error;
-        }
-        page_content[bytes_read] = '\0';
-
-        // create valid html file
-        if (html_create_page(header, page_content, page_path) != 0) {
+        if ((page_parse_content(source_file, source_path, content_size, content)) != 0) {
                 goto error;
         };
 
-        res = header;
-        header = NULL; // transfer ownership; owner must free
+        // create whole Html file for page
+        if (html_create_page(header, content, page_path) != 0) {
+                goto error;
+        };
+
+        res->header = header;
+        res->content = content;
+        header = NULL;  // transfer ownership; freed in main
+        content = NULL; // transfer ownership; freed in main
+
         goto cleanup;
 
 error:
+        if (res) free(res);
         res = NULL;
 
 cleanup:
+        if (header) {
+                free((char *)header->title);
+                free((char *)header->subtitle);
+                free(header);
+        }
+        if (content) free(content);
         if (source_file) fclose(source_file);
-        if (page_content) free(page_content);
-        if (header) free(header);
 
         return res;
 }
@@ -484,6 +495,7 @@ int main(void) {
 
                         __copy_file(ftsentp->fts_path, to_path);
                 } else { // posts
+                        page_result *page_result;
 
                         // skip blocks
                         if (strcmp(ftsentp->fts_parent->fts_name, "blocks") == 0) {
@@ -500,19 +512,23 @@ int main(void) {
                                 continue;
                         }
 
-                        page_header *header = NULL;
                         if (header_arr.len >= _SITE_PAGES_MAX) {
                                 ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
                                 res = -1;
                                 goto cleanup;
                         }
 
-                        if ((header = __process_page_file(ftsentp, curr_dir)) == NULL) {
+                        if ((page_result = __process_page_file(ftsentp, curr_dir)) == NULL) {
                                 res = -1;
                                 goto cleanup;
                         } else {
-                                header_arr.elems[header_arr.len] = header;
+                                header_arr.elems[header_arr.len] = page_result->header;
                                 header_arr.len++;
+
+                                content_arr.elems[content_arr.len] = page_result->content;
+                                content_arr.len++;
+
+                                free(page_result);
                         }
                 }
         }
@@ -543,7 +559,6 @@ cleanup:
 
         // page content (content_arr.elem allocated statically
         for (int i = 0; i < content_arr.len; i++) {
-                free(content_arr.elems[i]->content);
                 free(content_arr.elems[i]);
         }
 

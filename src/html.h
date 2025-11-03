@@ -21,27 +21,9 @@
 #define _SITE_SCRIPT "<script src=\"/script.js\" defer></script>"
 
 typedef struct {
-        char *content;
-        struct {
-                char path[_SITE_PATH_MAX];
-        } meta;
-} page_content;
-
-typedef struct {
-        page_content *elems[_SITE_PAGES_MAX];
-        int len;
-} page_content_arr;
-
-typedef struct {
         long len;
         char *content;
-} page_block;
-
-extern page_content_arr content_arr;
-
-// global template content (loaded at startup)
-extern char *site_header;
-extern char *site_footer;
+} htm_block;
 
 // initialize templates
 int html_init_templates(void);

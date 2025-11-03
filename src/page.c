@@ -1,8 +1,10 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "error.h"
 #include "page.h"
 
 int page_parse_header(FILE *file, page_header *header) {
@@ -54,4 +56,23 @@ int page_parse_header(FILE *file, page_header *header) {
         if (!header->title || !header->subtitle) return -1;
 
         return (int)readt;
+}
+
+int page_parse_content(FILE *source_file, char *source_path, size_t content_size, char *content) {
+        int ret = 0;
+
+        size_t bytes_read = fread(content, 1, content_size, source_file);
+        if (bytes_read != content_size) {
+                if (feof(source_file)) {
+                        printf("Page has no content. Aborting.\n");
+                } else if (ferror(source_file)) {
+                        ERRORF(SITE_ERROR_FILE_READ, source_path);
+                } else {
+                        ERRORF(SITE_ERROR_UNEXPECTED_EOF, source_path);
+                }
+                ret = -1;
+        }
+        content[bytes_read] = '\0';
+
+        return ret;
 }

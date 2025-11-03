@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
 
@@ -27,7 +28,7 @@ static int __qsort_cb(const void *a, const void *b) {
 }
 
 // shared template building blocks
-static int __html_parse_block(const char *block_path, page_block *block) {
+static int __html_parse_block(const char *block_path, htm_block *block) {
         FILE *block_file = NULL;
         char *block_content = NULL;
         int res = -1;
@@ -83,7 +84,7 @@ cleanup:
 
 // initialize all templates
 int html_init_templates(void) {
-        page_block menu_block = {0};
+        htm_block menu_block = {0};
 
         // load menu
         if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/menu.htm", &menu_block) != 0) {
@@ -153,14 +154,8 @@ static char *__html_create_content(page_header *header, char *page_content) {
         free(upper);
 
         // add content
-        char *line = strtok(page_content, "\n");
-        while (line) {
-                if (*line) {
-                        offset = snprintf(pos, buf_size, "%s\n", line);
-                        pos += offset;
-                }
-                line = strtok(NULL, "\n");
-        }
+        offset = snprintf(pos, buf_size - (pos - buf), "%s", page_content);
+        pos += offset;
 
         // close main content
         offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "</div>");
@@ -251,17 +246,6 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
                 return -1;
         }
 
-        page_content *page_content = NULL;
-        if ((page_content = malloc(sizeof(*page_content))) == NULL) {
-                free(html_content);
-                fclose(dest_file);
-                return -1;
-        }
-        page_content->content = html_content;
-        strncpy(page_content->meta.path, header->meta.path, _SITE_PATH_MAX - 1);
-
-        content_arr.elems[content_arr.len] = page_content;
-        content_arr.len++;
         fprintf_ret = fprintf(dest_file, "%s", html_content);
 
         // close html
@@ -325,12 +309,7 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
             site_menu);
 
         // content
-        char *dest_line = strtok((char *)page_content, "\n");
-        while (dest_line) {
-                if (!*dest_line) continue;
-                fprintf_ret = fprintf(dest_file, "%s\n", dest_line);
-                dest_line = strtok(NULL, "\n");
-        }
+        fprintf_ret = fprintf(dest_file, "%s", page_content);
 
         // sort by creation time
         qsort(header_arr->elems, header_arr->len, sizeof(page_header *), __qsort_cb);
@@ -416,7 +395,7 @@ char *html_escape_content(char *html_content) {
                         pos += snprintf(pos, buffer_size, "%s", "&quot;");
                         break;
                 case '\'':
-                        pos += snprintf(pos, buffer_size, "%s", "&#39;");
+                        pos += snprintf(pos, buffer_size, "%s", "&apos;");
                         break;
                 case '&':
                         pos += snprintf(pos, buffer_size, "%s", "&amp;");

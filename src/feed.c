@@ -54,7 +54,7 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                                         header.meta.modified);
                 }
 
-                char *escaped_content = html_escape_content(content_arr.elems[i]->content);
+                char *escaped_content = html_escape_content(content_arr.elems[i]);
                 if (escaped_content == NULL) {
                         ERRORF(SITE_ERROR_MEMORY_ALLOCATION, header.meta.path)
                         return -1;
