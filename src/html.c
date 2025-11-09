@@ -210,6 +210,7 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
             "    <meta name=\"theme-color\" content=\"var(--color-bg)\" media=\"(prefers-color-scheme: dark)\">\n"
             "	 <link href=\"/feed.atom\" type=\"application/atom+xml\" rel=\"alternate\">\n"
             "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
+            "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
 	         _SITE_HTML_FONT
             "    <title>%s</title>\n"
             "    %s\n"
@@ -220,7 +221,7 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
             "            <main>\n"
 	    "                <article id=\"post-main\">\n",
             // clang-format on
-            _SITE_STYLE_SHEET_PATH, header->title, _SITE_SCRIPT);
+            _SITE_RESET_STYLE_SHEET_PATH, _SITE_STYLE_SHEET_PATH, header->title, _SITE_SCRIPT);
 
         // write content
         char *html_content = NULL;
@@ -277,6 +278,7 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
             "    <meta name=\"theme-color\" content=\"var(--color-bg)\" media=\"(prefers-color-scheme: dark)\">\n"
             "    <link href=\"/feed.atom\" type=\"application/atom+xml\" rel=\"alternate\">\n"
             "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
+            "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
 		 _SITE_HTML_FONT
             "    <title>%s</title>\n"
             "    %s\n"
@@ -286,7 +288,7 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
 	    "        <div id=\"index\" class=\"content\">\n"
             "            <main>\n",
             // clang-format on
-            _SITE_STYLE_SHEET_PATH, _SITE_EXT_TITLE, _SITE_SCRIPT);
+            _SITE_RESET_STYLE_SHEET_PATH, _SITE_STYLE_SHEET_PATH, _SITE_EXT_TITLE, _SITE_SCRIPT);
 
         // content
         fprintf_ret = fprintf(dest_file, "%s", page_content);

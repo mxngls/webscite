@@ -7,8 +7,9 @@
 #define _SITE_EXT_TITLE "SITE_TITLE"
 #endif
 
-#define _SITE_BLOCK_DIR_PATH   _SITE_EXT_SOURCE_DIR "/blocks"
-#define _SITE_STYLE_SHEET_PATH "/style.css"
+#define _SITE_BLOCK_DIR_PATH         _SITE_EXT_SOURCE_DIR "/blocks"
+#define _SITE_STYLE_SHEET_PATH       "/style.css"
+#define _SITE_RESET_STYLE_SHEET_PATH "/reset.css"
 
 // clang-format off
 #define _SITE_HTML_FONT \
