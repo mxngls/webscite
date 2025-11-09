@@ -158,7 +158,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
                                       "<div id=\"date-created\">\n"
                                           "<small>%s</small>\n"
                                       "</div>\n"
-				      "|\n"
+                                      "|\n"
                                       "<div id=\"date-updated\">\n"
                                           "<small>%s</small>\n"
                                       "</div>\n"
@@ -299,7 +299,9 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
         qsort(header_arr->elems, header_arr->len, sizeof(page_header *), __qsort_cb);
 
         // add a list of posts to the index
-        fprintf_ret = fprintf(dest_file, "<section id=\"post-list\">\n"
+        fprintf_ret = fprintf(dest_file, "<hr />\n"
+                                         "<section id=\"post-list\">\n"
+                                         "    <h3 style=\"margin-bottom: 1rem;\">Writing</h3>\n"
                                          "    <ul>\n");
 
         for (int i = 0; i < header_arr->len; i++) {
