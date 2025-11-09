@@ -143,10 +143,6 @@ static char *__html_create_content(page_header *header, char *page_content) {
         offset = snprintf(pos, buf_size - (pos - buf), "%s", page_content);
         pos += offset;
 
-        // close main content
-        offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "</div>");
-        pos += offset;
-
         // add updated date at the end if present
         int has_modified = header->meta.modified != 0;
         if (has_modified) {
@@ -157,6 +153,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
                          "Last updated on %s", modified_date);
                 offset = snprintf(pos, buf_size - (pos - buf),
                                   // clang-format off
+                                  "<hr>"
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
                                           "<small>%s</small>\n"
@@ -172,6 +169,7 @@ static char *__html_create_content(page_header *header, char *page_content) {
         } else {
                 offset = snprintf(pos, buf_size - (pos - buf),
                                   // clang-format off
+                                  "<hr>"
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
                                           "<small>%s</small>\n"
@@ -181,6 +179,10 @@ static char *__html_create_content(page_header *header, char *page_content) {
                                   created_formatted_date);
                 pos += offset;
         }
+
+        // close main content
+        offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "</div>");
+        pos += offset;
 
         return buf;
 }
