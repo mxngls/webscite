@@ -15,8 +15,7 @@
 #define _SITE_HTML_FONT \
 	"<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n" \
 	"<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n" \
-	"<link href=\"https://fonts.googleapis.com/css2?family=Inconsolata:wdth,wght@95.3,200..900&family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap\" rel=\"stylesheet\">\n"
-// clang-format on
+	"<link href=\"https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap\" rel=\"stylesheet\">\n" // clang-format on
 
 #define _SITE_SCRIPT "<script src=\"/script.js\" defer></script>"
 
