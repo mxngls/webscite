@@ -8,7 +8,7 @@ For our site to successfully build, the following two prerequisites exist:
 
 Content that is to be served as an HTML page has to reside in our `content/` directory and have a `.htm` extension[^1]. Everything else will simply be copied as is. The default output directory containing all of our site's content will end up in `docs/` by default. Both directories are customizable through passing appropriate values to the underlying Makefile used to build our site. `_SITE_EXT_SOURCE_DIR` can be set to decide upon an alternative content path while `_SITE_EXT_TARGET_DIR` will set a different output path.
   
-`.htm` files inside the `content/` directory use HTML tags and are expected to have two header fields: title and subtitle. Both field names are followed by a colon, some white space and finally the field value. These headers are separated by a single newline.
+`.htm` files inside the `content/` directory use HTML tags and are expected to have one header field: title. Both field names are followed by a colon, some white space and finally the field value. These headers are separated by a single newline.
   
 A certain degree of templating can be achieved through placing .htm files inside the `content/blocks/` directory. In order to use these (building) blocks during the build process, the source of the static site generator itself has to be modified. `menu.htm` is included as a reference for how to do so.
   

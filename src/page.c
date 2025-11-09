@@ -14,7 +14,6 @@ int page_parse_header(FILE *file, page_header *header) {
         ssize_t readt = 0;
 
         header->title = NULL;
-        header->subtitle = NULL;
 
         bool in_header = true;
         while (in_header && (readt += read = getline(&line, &len, file))) {
@@ -48,12 +47,11 @@ int page_parse_header(FILE *file, page_header *header) {
                 }
 
                 if (strncmp(key, "title", read) == 0) header->title = strdup(value);
-                else if (strncmp(key, "subtitle", read) == 0) header->subtitle = strdup(value);
         }
 
         free(line);
 
-        if (!header->title || !header->subtitle) return -1;
+        if (!header->title) return -1;
 
         return (int)readt;
 }

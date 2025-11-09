@@ -335,7 +335,6 @@ error:
 cleanup:
         if (header) {
                 free((char *)header->title);
-                free((char *)header->subtitle);
                 free(header);
         }
         if (content) free(content);
@@ -553,7 +552,6 @@ cleanup:
         // headers (header_arr.elem allocated statically
         for (int i = 0; i < header_arr.len; i++) {
                 free((char *)header_arr.elems[i]->title);
-                free((char *)header_arr.elems[i]->subtitle);
                 free(header_arr.elems[i]);
         }
 

@@ -9,7 +9,6 @@
 
 typedef struct {
         char *title;
-        char *subtitle;
         struct {
                 char path[_SITE_PATH_MAX];
                 int64_t created;
