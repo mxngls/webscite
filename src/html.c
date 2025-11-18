@@ -255,8 +255,10 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
 }
 
 // create html index file
-int html_create_index(char *page_content, char *output_path, page_header_arr *header_arr,
-                      const char *index_excempt_arr[], int index_excempt_arr_n) {
+int html_create_index(char *page_content, char *output_path,
+                      __attribute__((unused)) page_header_arr *header_arr,
+                      __attribute__((unused)) const char *index_excempt_arr[],
+                      __attribute__((unused)) int index_excempt_arr_n) {
         // html destination
         FILE *dest_file = fopen(output_path, "w");
         if (dest_file == NULL) {
@@ -295,14 +297,37 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
         // content
         fprintf_ret = fprintf(dest_file, "%s", page_content);
 
+        // close <main>
+        fprintf_ret = fprintf(dest_file, "        </main>\n"
+                                         "    </div>\n"
+                                         "</body>\n"
+                                         "</html>\n");
+
+        if (fprintf_ret < 0) {
+                ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
+                fclose(dest_file);
+                return -1;
+        }
+
+        fclose(dest_file);
+
+        return 0;
+}
+
+// create HTML list of all posts
+__attribute__((unused)) static int __html_post_list(page_header_arr *header_arr, FILE *dest_file,
+                                                    char *index_excempt_arr[],
+                                                    int index_excempt_arr_n) {
+        int ret = 0;
+
         // sort by creation time
         qsort(header_arr->elems, header_arr->len, sizeof(page_header *), __qsort_cb);
 
         // add a list of posts to the index
-        fprintf_ret = fprintf(dest_file, "<hr />\n"
-                                         "<section id=\"post-list\">\n"
-                                         "    <h3 style=\"margin-bottom: 1rem;\">Writing</h3>\n"
-                                         "    <ul>\n");
+        ret = fprintf(dest_file, "<hr />\n"
+                                 "<section id=\"post-list\">\n"
+                                 "    <h2 style=\"margin-bottom: 1rem;\">Writing</h3>\n"
+                                 "    <ul>\n");
 
         for (int i = 0; i < header_arr->len; i++) {
                 bool skip = false;
@@ -321,39 +346,23 @@ int html_create_index(char *page_content, char *output_path, page_header_arr *he
                                  "<span class=\"draft\">DRAFT</span>");
                 }
 
-                fprintf_ret = fprintf(dest_file,
-                                      // clang-format off
+                ret = fprintf(dest_file,
+                              // clang-format off
 				      "<li>\n"
                     		          "<span class=\"date\">%s</span>\n"
                     		          "<a href=\"%s\">\n"
 					      "<span class=\"title\">%s</span>\n"
                     		          "</a>\n"
                     		      "</li>\n",
-                                      // clang-format on
-                                      created_date, header_arr->elems[i]->meta.path,
-                                      header_arr->elems[i]->title);
+                              // clang-format on
+                              created_date, header_arr->elems[i]->meta.path,
+                              header_arr->elems[i]->title);
         }
 
-        fprintf_ret = fprintf(dest_file, "    </ul>\n"
-                                         "</section>\n");
+        ret = fprintf(dest_file, "    </ul>\n"
+                                 "</section>\n");
 
-        // close <main>
-        // clang-format off
-        fprintf_ret = fprintf(dest_file, "        </main>\n"
-					 "    </div>\n"
-                                         "</body>\n"
-                                         "</html>\n");
-        // clang-format on
-
-        if (fprintf_ret < 0) {
-                ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
-                fclose(dest_file);
-                return -1;
-        }
-
-        fclose(dest_file);
-
-        return 0;
+        return ret;
 }
 
 // escape html entities
