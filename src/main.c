@@ -25,6 +25,12 @@ tracked_file_arr tracked_arr = {
     .capacity = 0,
 };
 
+typedef struct {
+        char *name;
+        char *path;
+        off_t size;
+} page_info;
+
 // utils
 static int __copy_file(char *, char *);
 static FTS *__init_fts(char *);
@@ -33,9 +39,8 @@ static int __validate_ext_dirs(char *, char *);
 static char *__extract_ext_prefix(char *);
 static char *__extract_dir(char *, bool);
 
-// main routines
-static page_result *__process_page_file(FTSENT *, char *);
-static int __process_index_file(char *, page_header_arr *);
+// main routine
+static page_result *__process_page_file(page_info *, char *, page_header_arr *, bool, bool, bool);
 
 static int __copy_file(char *from, char *to) {
         FILE *from_file = NULL;
@@ -227,7 +232,9 @@ static FTS *__init_fts(char *source) {
         return ftsp;
 }
 
-static page_result *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
+static page_result *__process_page_file(page_info *page_file, char *curr_dir,
+                                        page_header_arr *header_arr, bool is_index,
+                                        bool include_title, bool include_date) {
         page_result *res = NULL;
 
         if ((res = malloc(sizeof(page_result))) == NULL) {
@@ -237,7 +244,7 @@ static page_result *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
         res->header = NULL;
         res->content = NULL;
 
-        char *source_path = ftsentp->fts_path;
+        char *source_path = page_file->path;
         FILE *source_file = NULL;
 
         tracked_file *tracked = NULL;
@@ -245,14 +252,14 @@ static page_result *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
         page_header *header = NULL;
         char *content = NULL;
 
-        if ((source_file = fopen(ftsentp->fts_path, "r")) == NULL) {
+        if ((source_file = fopen(page_file->path, "r")) == NULL) {
                 ERRORF(SITE_ERROR_FILE_READ, source_path);
                 goto error;
         }
 
         // convert extension to proper .html
         char page_name[256] = "\0";
-        snprintf(page_name, sizeof(page_name), "%s", ftsentp->fts_name);
+        snprintf(page_name, sizeof(page_name), "%s", page_file->name);
         strlcat(page_name, "l", sizeof(page_name));
 
         // output path
@@ -289,7 +296,7 @@ static page_result *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
         };
 
         // parse page content                                                       }
-        size_t content_size = ftsentp->fts_statp->st_size - header_len;
+        size_t content_size = page_file->size - header_len;
         content = malloc(content_size + 1);
         if (content == NULL) {
                 ERROR(SITE_ERROR_MEMORY_ALLOCATION);
@@ -300,7 +307,9 @@ static page_result *__process_page_file(FTSENT *ftsentp, char *curr_dir) {
         };
 
         // create whole Html file for page
-        if (html_create_page(header, content, page_path) != 0) {
+        if (html_create_page(header, content, page_path, header_arr, index_excempt_arr,
+                             _SITE_EXCEMPT_LIST_COUNT, is_index, include_title,
+                             include_date) != 0) {
                 goto error;
         };
 
@@ -321,60 +330,6 @@ cleanup:
                 free(header);
         }
         if (content) free(content);
-        if (source_file) fclose(source_file);
-
-        return res;
-}
-
-static int __process_index_file(char *index_file_path, page_header_arr *header_arr) {
-        int res = 0;
-        FILE *source_file = NULL;
-        char *page_content = NULL;
-
-        if ((source_file = fopen(index_file_path, "r")) == NULL) {
-                ERRORF(SITE_ERROR_FILE_OPEN_READ, index_file_path);
-                goto error;
-        }
-
-        struct stat source_file_stat;
-        if (stat(index_file_path, &source_file_stat) != 0) {
-                ERRORF(SITE_ERROR_FILE_STAT, index_file_path);
-                goto error;
-        }
-
-        // output path
-        char page_path[_SITE_PATH_MAX];
-        char *filename = strrchr(index_file_path, '/');
-        filename ? filename++ : (filename = index_file_path);
-        snprintf(page_path, sizeof(page_path), "%s/%s", _SITE_EXT_TARGET_DIR, filename);
-
-        size_t content_size = source_file_stat.st_size;
-        if ((page_content = malloc(content_size + 1)) == NULL) {
-                ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-                goto error;
-        }
-
-        ssize_t bytes_read = fread(page_content, 1, source_file_stat.st_size, source_file);
-        if (bytes_read != source_file_stat.st_size) {
-                if (feof(source_file)) {
-                        printf("Page has no content. Aborting.\n");
-                } else if (ferror(source_file)) {
-                        ERRORF(SITE_ERROR_FILE_READ, index_file_path);
-                } else {
-                        ERRORF(SITE_ERROR_UNEXPECTED_EOF, index_file_path);
-                }
-                goto error;
-        }
-        page_content[bytes_read] = '\0';
-        res = html_create_index(page_content, page_path, header_arr, index_excempt_arr,
-                                _SITE_EXCEMPT_LIST_COUNT);
-        goto cleanup;
-
-error:
-        res = -1;
-
-cleanup:
-        if (page_content) free(page_content);
         if (source_file) fclose(source_file);
 
         return res;
@@ -424,6 +379,12 @@ int main(void) {
         char curr_dir[PATH_MAX] = "\0";
         int curr_fts_level = 0;
 
+        // Blog entry with owned string storage
+        char index_name[256] = "\0";
+        char index_path[PATH_MAX] = "\0";
+        page_info index = {.name = index_name, .path = index_path, .size = 0};
+        bool found_index = false;
+
         while ((ftsentp = fts_read(ftsp)) != NULL) {
                 if (curr_fts_level != ftsentp->fts_level) {
                         // update current directory
@@ -465,7 +426,6 @@ int main(void) {
                 bool has_ext_htm = strcmp(dot + 1, "htm") == 0;
 
                 if (!has_ext_htm) { // non-posts
-
                         char to_path[_SITE_PATH_MAX];
                         if (curr_dir[0] == '\0') {
                                 snprintf(to_path, sizeof(to_path), "%s/%s", _SITE_EXT_TARGET_DIR,
@@ -477,6 +437,11 @@ int main(void) {
 
                         __copy_file(ftsentp->fts_path, to_path);
                 } else { // posts
+                        page_info page_file = {
+                            .name = ftsentp->fts_name,
+                            .path = ftsentp->fts_path,
+                            .size = ftsentp->fts_statp->st_size,
+                        };
                         page_result *page_result;
 
                         // skip blocks
@@ -489,8 +454,15 @@ int main(void) {
                                 continue;
                         }
 
-                        // ignore index for now
-                        if (strcmp(ftsentp->fts_name, _SITE_INDEX_PATH) == 0) {
+                        // ignore custom blog entry point
+                        if (strcmp(ftsentp->fts_name, _SITE_EXT_INDEX) == 0) {
+                                strncpy(index_name, ftsentp->fts_name, 255);
+                                strncpy(index_path, ftsentp->fts_path, PATH_MAX - 1);
+
+                                index.size = ftsentp->fts_statp->st_size;
+
+                                found_index = true;
+
                                 continue;
                         }
 
@@ -500,7 +472,19 @@ int main(void) {
                                 goto cleanup;
                         }
 
-                        if ((page_result = __process_page_file(ftsentp, curr_dir)) == NULL) {
+                        if (strcmp(ftsentp->fts_name, "index.htm") == 0) {
+                                if (__process_page_file(&page_file, curr_dir, &header_arr, false,
+                                                        false, false) == NULL) {
+                                        res = -1;
+                                        goto cleanup;
+                                }
+
+                                // not a plain post
+                                continue;
+                        }
+
+                        if ((page_result = __process_page_file(&page_file, curr_dir, &header_arr,
+                                                               false, true, true)) == NULL) {
                                 res = -1;
                                 goto cleanup;
                         } else {
@@ -515,7 +499,9 @@ int main(void) {
                 }
         }
 
-        if (__process_index_file(_SITE_EXT_SOURCE_DIR "/" _SITE_INDEX_PATH, &header_arr) != 0) {
+        // fill custom blog entry point with list of post entries
+        if (found_index &&
+            (__process_page_file(&index, curr_dir, &header_arr, true, false, false)) == NULL) {
                 res = -1;
                 goto cleanup;
         }

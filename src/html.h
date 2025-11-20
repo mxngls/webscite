@@ -1,6 +1,8 @@
 #ifndef HTML_H
 #define HTML_H
 
+#include <stdbool.h>
+
 #include "page.h"
 
 #define _SITE_BLOCK_DIR_PATH         _SITE_EXT_SOURCE_DIR "/blocks"
@@ -25,8 +27,8 @@ int html_init_templates(void);
 void html_cleanup_templates(void);
 
 // create html files
-int html_create_page(page_header *, char *, char *);
-int html_create_index(char *, char *, page_header_arr *, const char *[], int);
+int html_create_page(page_header *, char *, char *, page_header_arr *, const char *[], int, bool,
+                     bool, bool);
 char *html_escape_content(char *);
 
 #endif // HTML_H

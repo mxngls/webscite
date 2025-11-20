@@ -13,7 +13,8 @@
 #include "html.h"
 #include "page.h"
 
-// global template content (NOTE: currently unused)
+// global template content
+char *site_header = NULL;
 
 // compare by creation time
 static int __qsort_cb(const void *a, const void *b) {
@@ -26,8 +27,8 @@ static int __qsort_cb(const void *a, const void *b) {
         return 0;
 }
 
-// shared template building blocks (NOTE: currently unused)
-__attribute__((unused)) static int __html_parse_block(const char *block_path, htm_block *block) {
+// shared template building blocks
+static int __html_parse_block(const char *block_path, htm_block *block) {
         FILE *block_file = NULL;
         char *block_content = NULL;
         int res = -1;
@@ -81,22 +82,39 @@ cleanup:
         return res;
 }
 
-// initialize all templates (NOTE: currently unused)
+// initialize all templates
 int html_init_templates(void) {
         // (1) parse block content
         // (2) transfer ownership to global variable
 
+        htm_block header_block = {0};
+
+        // load header
+        if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/header.htm", &header_block) != 0) {
+                goto error;
+        }
+
+        site_header = header_block.content;
+
         return 0;
 
-        // error:
-        //         return -1;
+error:
+        if (header_block.content) free(header_block.content);
+        return -1;
 }
 
-// cleanup templates (NOTE: currently unused)
-void html_cleanup_templates(void) {}
+// cleanup templates
+void html_cleanup_templates(void) {
+        if (site_header) {
+                free(site_header);
+                site_header = NULL;
+        }
+}
 
 // package content
-static char *__html_create_content(page_header *header, char *page_content) {
+static char *__html_create_content(page_header *header, char *page_content,
+                                   char *additional_content, bool include_title, bool include_date,
+                                   bool is_blog_entry) {
 
         size_t buf_size = 48 * 1024;
         char *buf = NULL;
@@ -108,76 +126,85 @@ static char *__html_create_content(page_header *header, char *page_content) {
         char *pos = buf;
         int offset = 0;
 
-        char created_date[256];
-        char created_formatted_date[256];
-        if (header->meta.created) {
-                ghist_format_ts("%Y-%m-%d", created_date, header->meta.created);
-                snprintf(created_formatted_date, sizeof(created_formatted_date), "Created on %s",
-                         created_date);
-        } else {
-                snprintf(created_formatted_date, sizeof(created_formatted_date), "%s",
-                         "<span class=\"draft\">DRAFT</span>");
-        }
-
         offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
         pos += offset;
 
-        // add header
-        char *upper = malloc(strlen(header->title) + 1);
-        if (upper == NULL) {
-                ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-                free(buf);
-                return NULL;
+        if (is_blog_entry) {
+                // append "l" to existing ".htm" extension
+                char blog_main[_SITE_PATH_MAX] = "";
+                snprintf(blog_main, sizeof(blog_main), "%sl", _SITE_EXT_INDEX);
+
+                offset = snprintf(
+                    pos, buf_size - (pos - buf),
+                    "<a style=\"display: inline-block; text-decoration: none; margin-bottom: "
+                    "1rem;\"href=\"%s\">‹ "
+                    "back</a>\n",
+                    blog_main);
+                pos += offset;
         }
-        strcpy(upper, header->title);
-        char *p = upper;
-        while (*p) {
-                *p = (char)toupper((unsigned char)*p);
-                p++;
+
+        if (include_title) {
+                offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", header->title);
+                pos += offset;
         }
-        offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", upper);
-        pos += offset;
-        free(upper);
 
         // add content
         offset = snprintf(pos, buf_size - (pos - buf), "%s", page_content);
         pos += offset;
 
-        // add updated date at the end if present
-        int has_modified = header->meta.modified != 0;
-        if (has_modified) {
-                char modified_date[256];
-                char modified_formatted_date[256];
-                ghist_format_ts("%Y-%m-%d", modified_date, header->meta.modified);
-                snprintf(modified_formatted_date, sizeof(modified_formatted_date),
-                         "Last updated on %s", modified_date);
-                offset = snprintf(pos, buf_size - (pos - buf),
-                                  // clang-format off
+        // add additional content if provided
+        if (additional_content) {
+                offset = snprintf(pos, buf_size - (pos - buf), "%s", additional_content);
+                pos += offset;
+        }
+
+        if (include_date) {
+                char created_date[256];
+                char created_formatted_date[256];
+                if (header->meta.created) {
+                        ghist_format_ts("%Y-%m-%d", created_date, header->meta.created);
+                        snprintf(created_formatted_date, sizeof(created_formatted_date),
+                                 "Created on %s", created_date);
+                } else {
+                        snprintf(created_formatted_date, sizeof(created_formatted_date), "%s",
+                                 "<span class=\"draft\">DRAFT</span>");
+                }
+
+                // add updated date at the end if present
+                int has_modified = header->meta.modified != 0;
+                if (has_modified) {
+                        char modified_date[256];
+                        char modified_formatted_date[256];
+                        ghist_format_ts("%Y-%m-%d", modified_date, header->meta.modified);
+                        snprintf(modified_formatted_date, sizeof(modified_formatted_date),
+                                 "Last updated on %s", modified_date);
+                        offset = snprintf(pos, buf_size - (pos - buf),
+                                          // clang-format off
                                   "<hr>"
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
                                           "<small>%s</small>\n"
                                       "</div>\n"
-                                      "|\n"
                                       "<div id=\"date-updated\">\n"
                                           "<small>%s</small>\n"
                                       "</div>\n"
                                   "</div>\n",
-                                  // clang-format on
-                                  created_formatted_date, modified_formatted_date);
-                pos += offset;
-        } else {
-                offset = snprintf(pos, buf_size - (pos - buf),
-                                  // clang-format off
+                                          // clang-format on
+                                          created_formatted_date, modified_formatted_date);
+                        pos += offset;
+                } else {
+                        offset = snprintf(pos, buf_size - (pos - buf),
+                                          // clang-format off
                                   "<hr>"
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
                                           "<small>%s</small>\n"
                                       "</div>\n"
                                   "</div>\n",
-                                  // clang-format on
-                                  created_formatted_date);
-                pos += offset;
+                                          // clang-format on
+                                          created_formatted_date);
+                        pos += offset;
+                }
         }
 
         // close main content
@@ -187,13 +214,86 @@ static char *__html_create_content(page_header *header, char *page_content) {
         return buf;
 }
 
+// create HTML list of all posts
+static char *__html_post_list(page_header_arr *header_arr, const char *index_excempt_arr[],
+                              int index_excempt_arr_n) {
+
+        size_t buf_size = 48 * 1024;
+        char *buf = NULL;
+        if ((buf = malloc(buf_size)) == NULL) {
+                ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+                return NULL;
+        }
+
+        // sort by creation time
+        qsort(header_arr->elems, header_arr->len, sizeof(page_header *), __qsort_cb);
+
+        char *pos = buf;
+        int offset = 0;
+
+        // add a list of posts to the index
+        offset = snprintf(pos, buf_size - (pos - buf),
+                          "<section id=\"post-list\">\n"
+                          "    <ul>\n");
+        pos += offset;
+
+        for (int i = 0; i < header_arr->len; i++) {
+                bool skip = false;
+                for (int j = 0; j < index_excempt_arr_n; j++) {
+                        int path_len = (int)strlen(header_arr->elems[i]->meta.path);
+                        if (path_len > 1 && strncmp(header_arr->elems[i]->meta.path + 1,
+                                                    index_excempt_arr[j], path_len - 2) == 0)
+                                skip = true;
+                }
+                if (skip) continue;
+                char created_date[256];
+                if (header_arr->elems[i]->meta.created) {
+                        ghist_format_ts("%Y", created_date, header_arr->elems[i]->meta.created);
+                } else {
+                        snprintf(created_date, sizeof(created_date), "%s",
+                                 "<span class=\"draft\">DRAFT</span>");
+                }
+
+                offset = snprintf(pos, buf_size - (pos - buf),
+                                  // clang-format off
+				      "<li>\n"
+                    		          "<span class=\"date\">%s</span>\n"
+                    		          "<a href=\"%s\">\n"
+					      "<span class=\"title\">%s</span>\n"
+                    		          "</a>\n"
+                    		      "</li>\n",
+                                  // clang-format on
+                                  created_date, header_arr->elems[i]->meta.path,
+                                  header_arr->elems[i]->title);
+                pos += offset;
+        }
+
+        offset = snprintf(pos, buf_size - (pos - buf),
+                          "    </ul>\n"
+                          "</section>\n");
+        pos += offset;
+
+        return buf;
+}
+
 // create plain html file
-int html_create_page(page_header *header, char *plain_content, char *output_path) {
+int html_create_page(page_header *header, char *plain_content, char *output_path,
+                     page_header_arr *header_arr, const char *index_excempt_arr[],
+                     int index_excempt_arr_n, bool is_blog, bool include_title, bool include_date) {
         // html destination
         FILE *dest_file = fopen(output_path, "w");
         if (dest_file == NULL) {
                 ERRORF(SITE_ERROR_FILE_CREATE, output_path);
                 return -1;
+        }
+
+        // TODO: this should probably be a hash map but for now an array should suffice
+        bool is_blog_entry = true;
+        for (int i = 0; i < index_excempt_arr_n; i++) {
+                int path_len = (int)strlen(header->meta.path);
+                if (path_len > 1 &&
+                    strncmp(header->meta.path + 1, index_excempt_arr[i], path_len - 2) == 0)
+                        is_blog_entry = false;
         }
 
         int fprintf_ret = 0;
@@ -218,20 +318,31 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
             "    %s\n"
             "</head>\n"
             "<body>\n"
-	    "    <div id=\"background\"></div>\n"
-	    "        <div id=\"post\" class=\"content\">\n"
-            "            <main>\n"
-	    "                <article id=\"post-main\">\n",
+	    "    %s\n"
+	    "    <div id=\"post\" class=\"content\">\n"
+            "        <main>\n"
+	    "            <article id=\"post-main\">\n",
             // clang-format on
-            _SITE_RESET_STYLE_SHEET_PATH, _SITE_STYLE_SHEET_PATH, header->title, _SITE_SCRIPT);
+            _SITE_RESET_STYLE_SHEET_PATH, _SITE_STYLE_SHEET_PATH, header->title, _SITE_SCRIPT,
+            site_header);
+
+        // if blog then add post list
+        char *post_list = NULL;
+        if (is_blog) {
+                if ((post_list = __html_post_list(header_arr, index_excempt_arr,
+                                                  index_excempt_arr_n)) == NULL) {
+                        fclose(dest_file);
+                        return -1;
+                }
+        };
 
         // write content
         char *html_content = NULL;
-        if ((html_content = __html_create_content(header, plain_content)) == NULL) {
+        if ((html_content = __html_create_content(header, plain_content, post_list, include_title,
+                                                  include_date, is_blog_entry)) == NULL) {
                 fclose(dest_file);
                 return -1;
         }
-
         fprintf_ret = fprintf(dest_file, "%s", html_content);
 
         // close html
@@ -252,117 +363,6 @@ int html_create_page(page_header *header, char *plain_content, char *output_path
         fclose(dest_file);
 
         return 0;
-}
-
-// create html index file
-int html_create_index(char *page_content, char *output_path,
-                      __attribute__((unused)) page_header_arr *header_arr,
-                      __attribute__((unused)) const char *index_excempt_arr[],
-                      __attribute__((unused)) int index_excempt_arr_n) {
-        // html destination
-        FILE *dest_file = fopen(output_path, "w");
-        if (dest_file == NULL) {
-                ERRORF(SITE_ERROR_FILE_CREATE, output_path);
-                return -1;
-        }
-
-        int fprintf_ret = 0;
-
-        fprintf_ret = fprintf(
-            dest_file,
-            // clang-format off
-            "<!DOCTYPE html>\n"
-            "<html lang=\"en\">\n"
-            "    <head>\n"
-            "    <meta charset=\"utf-8\">\n"
-            "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-            "    <meta name=\"apple-mobile-web-app-capable\" content=\"yes\">\n"
-            "    <meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\">\n"
-            "    <meta name=\"theme-color\" content=\"var(--color-bg)\" media=\"(prefers-color-scheme: light)\">\n"
-            "    <meta name=\"theme-color\" content=\"var(--color-bg)\" media=\"(prefers-color-scheme: dark)\">\n"
-            "    <link href=\"/feed.atom\" type=\"application/atom+xml\" rel=\"alternate\">\n"
-            "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
-            "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
-		 _SITE_HTML_FONT
-            "    <title>%s</title>\n"
-            "    %s\n"
-            "</head>\n"
-            "<body>\n"
-	    "    <div id=\"background\"></div>\n"
-	    "        <div id=\"index\" class=\"content\">\n"
-            "            <main>\n",
-            // clang-format on
-            _SITE_RESET_STYLE_SHEET_PATH, _SITE_STYLE_SHEET_PATH, _SITE_EXT_TITLE, _SITE_SCRIPT);
-
-        // content
-        fprintf_ret = fprintf(dest_file, "%s", page_content);
-
-        // close <main>
-        fprintf_ret = fprintf(dest_file, "        </main>\n"
-                                         "    </div>\n"
-                                         "</body>\n"
-                                         "</html>\n");
-
-        if (fprintf_ret < 0) {
-                ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
-                fclose(dest_file);
-                return -1;
-        }
-
-        fclose(dest_file);
-
-        return 0;
-}
-
-// create HTML list of all posts
-__attribute__((unused)) static int __html_post_list(page_header_arr *header_arr, FILE *dest_file,
-                                                    char *index_excempt_arr[],
-                                                    int index_excempt_arr_n) {
-        int ret = 0;
-
-        // sort by creation time
-        qsort(header_arr->elems, header_arr->len, sizeof(page_header *), __qsort_cb);
-
-        // add a list of posts to the index
-        ret = fprintf(dest_file, "<hr />\n"
-                                 "<section id=\"post-list\">\n"
-                                 "    <h2 style=\"margin-bottom: 1rem;\">Writing</h3>\n"
-                                 "    <ul>\n");
-
-        for (int i = 0; i < header_arr->len; i++) {
-                bool skip = false;
-                for (int j = 0; j < index_excempt_arr_n; j++) {
-                        int path_len = (int)strlen(header_arr->elems[i]->meta.path);
-                        if (path_len > 1 && strncmp(header_arr->elems[i]->meta.path + 1,
-                                                    index_excempt_arr[j], path_len - 2) == 0)
-                                skip = true;
-                }
-                if (skip) continue;
-                char created_date[256];
-                if (header_arr->elems[i]->meta.created) {
-                        ghist_format_ts("%Y", created_date, header_arr->elems[i]->meta.created);
-                } else {
-                        snprintf(created_date, sizeof(created_date), "%s",
-                                 "<span class=\"draft\">DRAFT</span>");
-                }
-
-                ret = fprintf(dest_file,
-                              // clang-format off
-				      "<li>\n"
-                    		          "<span class=\"date\">%s</span>\n"
-                    		          "<a href=\"%s\">\n"
-					      "<span class=\"title\">%s</span>\n"
-                    		          "</a>\n"
-                    		      "</li>\n",
-                              // clang-format on
-                              created_date, header_arr->elems[i]->meta.path,
-                              header_arr->elems[i]->title);
-        }
-
-        ret = fprintf(dest_file, "    </ul>\n"
-                                 "</section>\n");
-
-        return ret;
 }
 
 // escape html entities
