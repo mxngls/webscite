@@ -2,11 +2,6 @@
 
 SHELL = /bin/sh
 
-_SITE_EXT_SOURCE_DIR ?= content/
-_SITE_EXT_TARGET_DIR ?= docs/
-_SITE_EXT_GIT_DIR ?= .git/
-_SITE_EXT_TITLE ?= SITE_TITLE
-
 CC = clang
 
 SRC_DIR = src/
@@ -35,6 +30,11 @@ CFLAGS = \
 -D_SITE_EXT_TARGET_DIR=\"$(_SITE_EXT_TARGET_DIR)\" \
 -D_SITE_EXT_GIT_DIR=\"$(_SITE_EXT_GIT_DIR)\" \
 -D_SITE_EXT_TITLE=\"$(_SITE_EXT_TITLE)\" \
+-D_SITE_EXT_INDEX=\"$(_SITE_EXT_INDEX)\" \
+-D_SITE_EXT_AUTHOR=\"$(_SITE_EXT_AUTHOR)\" \
+-D_SITE_EXT_FEED_ID=\"$(_SITE_EXT_FEED_ID)\" \
+-D_SITE_EXT_HOST=\"$(_SITE_EXT_HOST)\" \
+-D_SITE_EXT_TAG_SCHEME_DATE=\"$(_SITE_EXT_TAG_SCHEME_DATE)\" \
 -I$(LIBGIT2_DIR)/include
 
 DEBUG_CFLAGS = $(CFLAGS) \
@@ -44,10 +44,13 @@ DEBUG_CFLAGS = $(CFLAGS) \
 # deploy
 deploy: clean build
 
-# debug build target
-debug: $(LIBGIT2_LIB) $(SRC_DIR)/*.c
+# debug build target (build only, don't run)
+debug-build: $(LIBGIT2_LIB) $(SRC_DIR)/*.c
 	@printf "%s\n" "Building site generator (DEBUG)..."
 	@$(CC) $(LDFLAGS) $(DEBUG_CFLAGS) $(SRC_DIR)/*.c -o main.out $(LDLIBS)
+
+# debug build target (build and run)
+debug: debug-build
 	@printf "%s\n" "Generating pages (DEBUG)..."
 	@./main.out
 

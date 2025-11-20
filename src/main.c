@@ -11,23 +11,6 @@
 #include "html.h"
 #include "page.h"
 
-#ifndef _SITE_EXT_SOURCE_DIR
-#define _SITE_EXT_SOURCE_DIR "content"
-#endif
-
-#ifndef _SITE_EXT_TARGET_DIR
-#define _SITE_EXT_TARGET_DIR "docs"
-#endif
-
-#ifndef _SITE_EXT_GIT_DIR
-#define _SITE_EXT_GIT_DIR ".git"
-#endif
-
-#define _SITE_INDEX_PATH "index.htm"
-// UNUSED #define _SITE_ABOUT_PATH "about.htm"
-
-#define _SITE_EXCEMPT_LIST ""
-
 const char *index_excempt_arr[] = {_SITE_EXCEMPT_LIST};
 #define _SITE_EXCEMPT_LIST_COUNT (sizeof(index_excempt_arr) / sizeof(index_excempt_arr[0]))
 

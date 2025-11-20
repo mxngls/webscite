@@ -16,7 +16,7 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                 return -1;
         }
 
-        char feed_uri[] = _SITE_URL "/feed.atom";
+        char feed_uri[] = _SITE_EXT_URL "/feed.atom";
 
         // make feed updated date RFC-3339 compliant
         size_t feed_modified_size = 256;
@@ -34,11 +34,11 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                       "    <author>\n"
                       "        <name>%s</name>\n"
                       "    </author>\n",
-                      _SITE_EXT_TITLE, _SITE_URL, feed_uri, feed_modified, _SITE_AUTHOR);
+                      _SITE_EXT_TITLE, _SITE_EXT_URL, feed_uri, feed_modified, _SITE_EXT_AUTHOR);
 
         // use date-only format for TAG URI
-        res = fprintf(dest_file, "    <id>tag:www.%s,%s:%s</id>\n", _SITE_HOST,
-                      _SITE_TAG_SCHEME_DATE, _SITE_FEED_ID);
+        res = fprintf(dest_file, "    <id>tag:www.%s,%s:%s</id>\n", _SITE_EXT_HOST,
+                      _SITE_EXT_TAG_SCHEME_DATE, _SITE_EXT_FEED_ID);
 
         for (int i = 0; i < header_arr->len; i++) {
                 // header_arr and content_arr grow together so no additonal checks necessary here
@@ -71,8 +71,8 @@ int create_feed(char *output_path, page_header_arr *header_arr) {
                               "        <published>%s</published>\n"
                               "        <updated>%s</updated>\n"
                               "    </entry>\n",
-                              header.title, escaped_content, header.meta.path, _SITE_HOST,
-                              _SITE_TAG_SCHEME_DATE, header.meta.path, created_formatted,
+                              header.title, escaped_content, header.meta.path, _SITE_EXT_HOST,
+                              _SITE_EXT_TAG_SCHEME_DATE, header.meta.path, created_formatted,
                               modified_formatted);
 
                 free(escaped_content);
