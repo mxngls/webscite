@@ -1,7 +1,8 @@
 #include "error.h"
 
-const char *get_error_format(site_error_t error) {
-        // clang-format off
+const char* get_error_format(site_error_t error)
+{
+	// clang-format off
         switch (error) {
 
 	case SITE_SUCCESS:			return "Success";
@@ -36,5 +37,5 @@ const char *get_error_format(site_error_t error) {
 	default:				return "Unknown error";
 
         }
-        // clang-format on
+	// clang-format on
 }

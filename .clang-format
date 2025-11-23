@@ -1,12 +1,20 @@
-BasedOnStyle: LLVM
+BasedOnStyle: WebKit
 
+# Use tabs instead of spaces
+UseTab: Always
+TabWidth: 8
+IndentWidth: 8
+
+# Keep your existing preferences
 AlignArrayOfStructures: Left
 AlignConsecutiveBitFields: true
 AlignConsecutiveMacros: true
-AlignEscapedNewlines: Right
-AlignOperands: Align
-AlignTrailingComments: true
 ColumnLimit: 100
-IndentWidth: 8
 
-AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+# Force each parameter on its own line
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: AlwaysBreak
+
+# Keep return type with function name
+PenaltyReturnTypeOnItsOwnLine: 10000
