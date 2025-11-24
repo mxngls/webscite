@@ -125,9 +125,9 @@ static char* __html_create_content(
     page_header* header,
     char* page_content,
     char* additional_content,
+    bool include_back_ref,
     bool include_title,
-    bool include_date,
-    bool is_blog_entry)
+    bool include_date)
 {
 
 	size_t buf_size = 48 * 1024;
@@ -143,10 +143,10 @@ static char* __html_create_content(
 	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
 	pos += offset;
 
-	if (is_blog_entry) {
+	if (include_back_ref) {
 		// append "l" to existing ".htm" extension
 		char blog_main[_SITE_PATH_MAX] = "";
-		snprintf(blog_main, sizeof(blog_main), "%sl", _SITE_EXT_INDEX);
+		snprintf(blog_main, sizeof(blog_main), "%sl", _SITE_EXT_BLOG_INDEX);
 
 		offset = snprintf(
 		    pos, buf_size - (pos - buf),
@@ -234,10 +234,7 @@ static char* __html_create_content(
 }
 
 // create HTML list of all posts
-static char* __html_post_list(
-    page_header_arr* header_arr,
-    const char* index_excempt_arr[],
-    int index_excempt_arr_n)
+static char* __html_post_list(page_header_arr* header_arr)
 {
 
 	size_t buf_size = 48 * 1024;
@@ -261,18 +258,6 @@ static char* __html_post_list(
 	pos += offset;
 
 	for (int i = 0; i < header_arr->len; i++) {
-		bool skip = false;
-		for (int j = 0; j < index_excempt_arr_n; j++) {
-			int path_len = (int)strlen(header_arr->elems[i]->meta.path);
-			if (path_len > 1
-			    && strncmp(
-				   header_arr->elems[i]->meta.path + 1, index_excempt_arr[j],
-				   path_len - 2)
-				== 0)
-				skip = true;
-		}
-		if (skip)
-			continue;
 		char created_date[256];
 		if (header_arr->elems[i]->meta.created) {
 			ghist_format_ts("%Y", created_date, header_arr->elems[i]->meta.created);
@@ -311,9 +296,8 @@ int html_create_page(
     char* plain_content,
     char* output_path,
     page_header_arr* header_arr,
-    const char* index_excempt_arr[],
-    int index_excempt_arr_n,
     bool is_blog,
+    bool include_back_ref,
     bool include_title,
     bool include_date)
 {
@@ -322,15 +306,6 @@ int html_create_page(
 	if (dest_file == NULL) {
 		ERRORF(SITE_ERROR_FILE_CREATE, output_path);
 		return -1;
-	}
-
-	// TODO: this should probably be a hash map but for now an array should suffice
-	bool is_blog_entry = true;
-	for (int i = 0; i < index_excempt_arr_n; i++) {
-		int path_len = (int)strlen(header->meta.path);
-		if (path_len > 1
-		    && strncmp(header->meta.path + 1, index_excempt_arr[i], path_len - 2) == 0)
-			is_blog_entry = false;
 	}
 
 	int fprintf_ret = 0;
@@ -366,9 +341,7 @@ int html_create_page(
 	// if blog then add post list
 	char* post_list = NULL;
 	if (is_blog) {
-		if ((post_list
-		     = __html_post_list(header_arr, index_excempt_arr, index_excempt_arr_n))
-		    == NULL) {
+		if ((post_list = __html_post_list(header_arr)) == NULL) {
 			fclose(dest_file);
 			return -1;
 		}
@@ -377,7 +350,7 @@ int html_create_page(
 	// write content
 	char* html_content = NULL;
 	if ((html_content = __html_create_content(
-		 header, plain_content, post_list, include_title, include_date, is_blog_entry))
+		 header, plain_content, post_list, include_back_ref, include_title, include_date))
 	    == NULL) {
 		fclose(dest_file);
 		return -1;

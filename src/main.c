@@ -329,19 +329,10 @@ static page_result* __process_page_file(
 		goto error;
 	};
 
-	// TODO: this should probably be a hash map but for now an array should suffice
-	// bool is_blog_entry = strcmp("index.htm",headekj);
-	for (int i = 0; i < _SITE_EXCEMPT_LIST_COUNT; i++) {
-		int path_len = (int)strlen(header->meta.path);
-		if (path_len > 1
-		    && strncmp(header->meta.path + 1, index_excempt_arr[i], path_len - 2) == 0)
-			include_back_ref = false;
-	}
-
 	// create whole Html file for page
 	if (html_create_page(
-		header, content, page_path, header_arr, index_excempt_arr, _SITE_EXCEMPT_LIST_COUNT,
-		is_blog, include_back_ref, include_title, include_date)
+		header, content, page_path, header_arr, is_blog, include_back_ref, include_title,
+		include_date)
 	    != 0) {
 		goto error;
 	};
@@ -495,7 +486,7 @@ int main(void)
 			}
 
 			// ignore custom blog entry point
-			if (strcmp(ftsentp->fts_name, _SITE_EXT_INDEX) == 0) {
+			if (strcmp(ftsentp->fts_name, _SITE_EXT_BLOG_INDEX) == 0) {
 				strncpy(index_name, ftsentp->fts_name, 255);
 				strncpy(index_path, ftsentp->fts_path, PATH_MAX - 1);
 
@@ -512,32 +503,32 @@ int main(void)
 				goto cleanup;
 			}
 
-			printf("ftsentp->fts_name: %s\n", ftsentp->fts_name);
-
-			if (strcmp(ftsentp->fts_name, "index.htm") == 0) {
-				if (__process_page_file(
-					&page_file, curr_dir, &header_arr, false, false, false,
-					false)
-				    == NULL) {
-					res = -1;
-					goto cleanup;
+			bool is_exempted = false;
+			for (int i = 0; i < _SITE_EXCEMPT_LIST_COUNT; i++) {
+				if (strcmp(ftsentp->fts_name, index_excempt_arr[i]) == 0) {
+					is_exempted = true;
+					break;
 				}
-
-				// not a plain post
-				continue;
 			}
+			bool include_back_ref = !is_exempted;
+			bool include_title = !is_exempted;
+			bool include_date = strcmp(ftsentp->fts_name, "index.htm");
 
 			if ((page_result = __process_page_file(
-				 &page_file, curr_dir, &header_arr, false, true, true, true))
+				 &page_file, curr_dir, &header_arr, false, include_back_ref,
+				 include_title, include_date))
 			    == NULL) {
 				res = -1;
 				goto cleanup;
 			} else {
-				header_arr.elems[header_arr.len] = page_result->header;
-				header_arr.len++;
+				// only add blog posts to the post list, not exempted pages
+				if (!is_exempted) {
+					header_arr.elems[header_arr.len] = page_result->header;
+					header_arr.len++;
 
-				content_arr.elems[content_arr.len] = page_result->content;
-				content_arr.len++;
+					content_arr.elems[content_arr.len] = page_result->content;
+					content_arr.len++;
+				}
 
 				free(page_result);
 			}
@@ -552,11 +543,13 @@ int main(void)
 		goto cleanup;
 	}
 
-	if (create_feed(
-		_SITE_EXT_TARGET_DIR "/"
-				     "feed.atom",
-		&header_arr)
-	    == -1) {
+	// Only create feed if there are blog posts
+	if (header_arr.len > 0
+	    && create_feed(
+		   _SITE_EXT_TARGET_DIR "/"
+					"feed.atom",
+		   &header_arr)
+		== -1) {
 		res = -1;
 		goto cleanup;
 	}

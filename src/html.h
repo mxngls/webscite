@@ -27,16 +27,7 @@ int html_init_templates(void);
 void html_cleanup_templates(void);
 
 // create html files
-int html_create_page(
-    page_header*,
-    char*,
-    char*,
-    page_header_arr*,
-    const char*[],
-    int,
-    bool,
-    bool,
-    bool);
+int html_create_page(page_header*, char*, char*, page_header_arr*, bool, bool, bool, bool);
 char* html_escape_content(char*);
 
 #endif // HTML_H
