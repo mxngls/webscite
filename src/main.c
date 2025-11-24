@@ -11,8 +11,8 @@
 #include "html.h"
 #include "page.h"
 
-const char* index_excempt_arr[] = { _SITE_EXCEMPT_LIST };
-#define _SITE_EXCEMPT_LIST_COUNT (int)((sizeof(index_excempt_arr) / sizeof(index_excempt_arr[0])))
+const char* index_excempt_arr[] = { _SITE_EXEMPT_LIST };
+#define _SITE_EXEMPT_LIST_COUNT (int)((sizeof(index_excempt_arr) / sizeof(index_excempt_arr[0])))
 
 page_content_arr content_arr = {
 	.elems = { 0 },
@@ -504,7 +504,7 @@ int main(void)
 			}
 
 			bool is_exempted = false;
-			for (int i = 0; i < _SITE_EXCEMPT_LIST_COUNT; i++) {
+			for (int i = 0; i < _SITE_EXEMPT_LIST_COUNT; i++) {
 				if (strcmp(ftsentp->fts_name, index_excempt_arr[i]) == 0) {
 					is_exempted = true;
 					break;
