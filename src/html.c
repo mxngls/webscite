@@ -33,7 +33,7 @@ static int __qsort_cb(const void* a, const void* b)
 }
 
 // shared template building blocks
-static int __html_parse_block(const char* block_path, htm_block* block)
+__attribute__((unused)) static int __html_parse_block(const char* block_path, htm_block* block)
 {
 	FILE* block_file = NULL;
 	char* block_content = NULL;
@@ -181,10 +181,7 @@ static char* __html_create_content(
 		snprintf(blog_main, sizeof(blog_main), "%sl", _SITE_EXT_BLOG_INDEX);
 
 		offset = snprintf(
-		    pos, buf_size - (pos - buf),
-		    "<a style=\"display: inline-block; text-decoration: none; margin-bottom: "
-		    "1rem;\"href=\"%s\">‹ "
-		    "back</a>\n",
+		    pos, buf_size - (pos - buf), "<a id=\"post-back-ref\" href=\"%s\">‹ back</a>\n",
 		    blog_main);
 		pos += offset;
 	}
@@ -204,6 +201,10 @@ static char* __html_create_content(
 		pos += offset;
 	}
 
+	// close main content
+	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "</div>");
+	pos += offset;
+
 	if (include_date) {
 		char created_date[256];
 		char created_formatted_date[256];
@@ -214,8 +215,7 @@ static char* __html_create_content(
 			    created_date);
 		} else {
 			snprintf(
-			    created_formatted_date, sizeof(created_formatted_date), "%s",
-			    "<span class=\"draft\">DRAFT</span>");
+			    created_formatted_date, sizeof(created_formatted_date), "%s", "DRAFT");
 		}
 
 		// add updated date at the end if present
@@ -230,13 +230,12 @@ static char* __html_create_content(
 			offset = snprintf(
 			    pos, buf_size - (pos - buf),
 			    // clang-format off
-                                  "<hr>"
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
-                                          "<small>%s</small>\n"
+                                          "%s\n"
                                       "</div>\n"
                                       "<div id=\"date-updated\">\n"
-                                          "<small>%s</small>\n"
+                                          "%s\n"
                                       "</div>\n"
                                   "</div>\n",
 			    // clang-format on
@@ -246,10 +245,9 @@ static char* __html_create_content(
 			offset = snprintf(
 			    pos, buf_size - (pos - buf),
 			    // clang-format off
-                                  "<hr>"
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
-                                          "<small>%s</small>\n"
+                                          "%s\n"
                                       "</div>\n"
                                   "</div>\n",
 			    // clang-format on
@@ -257,10 +255,6 @@ static char* __html_create_content(
 			pos += offset;
 		}
 	}
-
-	// close main content
-	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "</div>");
-	pos += offset;
 
 	return buf;
 }
@@ -294,20 +288,16 @@ static char* __html_post_list(page_header_arr* header_arr)
 		if (header_arr->elems[i]->meta.created) {
 			ghist_format_ts("%Y", created_date, header_arr->elems[i]->meta.created);
 		} else {
-			snprintf(
-			    created_date, sizeof(created_date), "%s",
-			    "<span class=\"draft\">DRAFT</span>");
+			snprintf(created_date, sizeof(created_date), "%s", "DRAFT");
 		}
 
 		offset = snprintf(
 		    pos, buf_size - (pos - buf),
 		    // clang-format off
-				      "<li>\n"
-                    		          "<span class=\"date\">%s</span>\n"
-                    		          "<a href=\"%s\">\n"
-					      "<span class=\"title\">%s</span>\n"
-                    		          "</a>\n"
-                    		      "</li>\n",
+			"<li>\n"
+				"<span class=\"post-list-date\">%s</span>\n"
+        		    	"<a href=\"%s\">%s</a>\n"
+        		"</li>\n",
 		    // clang-format on
 		    created_date, header_arr->elems[i]->meta.path, header_arr->elems[i]->title);
 		pos += offset;
@@ -352,10 +342,10 @@ int html_create_page(
             "    <title>%s</title>\n"
             "</head>\n"
             "<body>\n"
-	    "%s"
-	    "    <div id=\"post\" class=\"content\">\n"
-            "        <main>\n"
-	    "            <article id=\"post-main\">\n",
+	    "    <div id=\"content\">\n"
+	    "    %s"
+            "    <main>\n"
+            "        <article id=\"post\">\n",
 	    // clang-format on
 	    site_head, header->title, site_header ? site_header : "");
 
@@ -382,8 +372,8 @@ int html_create_page(
 	// clang-format off
         fprintf_ret = fprintf(dest_file, "            </article>\n"
                                          "        </main>\n"
+                                         "        %s\n"
                                          "    </div>\n"
-                                         "    %s\n"
                                          "</body>\n"
                                          "</html>\n",
                                          is_blog && site_footer ? site_footer : "");

@@ -9,7 +9,6 @@
 #define _SITE_STYLE_SHEET_PATH	     "/style.css"
 #define _SITE_RESET_STYLE_SHEET_PATH "/reset.css"
 
-
 typedef struct {
 	long len;
 	char* content;

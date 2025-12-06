@@ -19,7 +19,7 @@
 #endif
 
 #ifndef _SITE_EXT_BLOG_INDEX
-#define _SITE_EXT_BLOG_INDEX "blog.htm"
+#define _SITE_EXT_BLOG_INDEX "index.htm"
 #endif
 
 #ifndef _SITE_EXT_GIT_DIR
