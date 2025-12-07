@@ -14,7 +14,9 @@
 #include "page.h"
 
 // global template content
+char* site_head = NULL;
 char* site_header = NULL;
+char* site_footer = NULL;
 
 // compare by creation time
 static int __qsort_cb(const void* a, const void* b)
@@ -94,29 +96,55 @@ int html_init_templates(void)
 	// (1) parse block content
 	// (2) transfer ownership to global variable
 
+	htm_block head_block = { 0 };
 	htm_block header_block = { 0 };
+	htm_block footer_block = { 0 };
+
+	// load head
+	if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/head.htm", &head_block) != 0) {
+		goto error;
+	}
 
 	// load header
 	if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/header.htm", &header_block) != 0) {
 		goto error;
 	}
 
+	// load footer
+	if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/footer.htm", &footer_block) != 0) {
+		goto error;
+	}
+
+	site_head = head_block.content;
 	site_header = header_block.content;
+	site_footer = footer_block.content;
 
 	return 0;
 
 error:
+	if (head_block.content)
+		free(head_block.content);
 	if (header_block.content)
 		free(header_block.content);
+	if (footer_block.content)
+		free(footer_block.content);
 	return -1;
 }
 
 // cleanup templates
 void html_cleanup_templates(void)
 {
+	if (site_head) {
+		free(site_head);
+		site_head = NULL;
+	}
 	if (site_header) {
 		free(site_header);
 		site_header = NULL;
+	}
+	if (site_footer) {
+		free(site_footer);
+		site_footer = NULL;
 	}
 }
 
@@ -316,18 +344,8 @@ int html_create_page(
             "<!DOCTYPE html>"
             "<html lang=\"en\">\n"
             "<head>\n"
-            "    <meta charset=\"utf-8\">\n"
-            "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-            "    <meta name=\"apple-mobile-web-app-capable\" content=\"yes\">\n"
-            "    <meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\">\n"
-            "    <meta name=\"theme-color\" content=\"var(--color-bg)\" media=\"(prefers-color-scheme: light)\">\n"
-            "    <meta name=\"theme-color\" content=\"var(--color-bg)\" media=\"(prefers-color-scheme: dark)\">\n"
-            "	 <link href=\"/feed.atom\" type=\"application/atom+xml\" rel=\"alternate\">\n"
-            "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
-            "    <link rel=\"stylesheet\" href=\"%s\" type=\"text/css\">\n"
-	         _SITE_HTML_FONT
+            "%s"
             "    <title>%s</title>\n"
-            "    %s\n"
             "</head>\n"
             "<body>\n"
 	    "    %s\n"
@@ -335,8 +353,7 @@ int html_create_page(
             "        <main>\n"
 	    "            <article id=\"post-main\">\n",
 	    // clang-format on
-	    _SITE_RESET_STYLE_SHEET_PATH, _SITE_STYLE_SHEET_PATH, header->title, _SITE_SCRIPT,
-	    site_header);
+	    site_head, header->title, site_header);
 
 	// if blog then add post list
 	char* post_list = NULL;
@@ -362,8 +379,10 @@ int html_create_page(
         fprintf_ret = fprintf(dest_file, "            </article>\n"
                                          "        </main>\n"
                                          "    </div>\n"
+                                         "    %s\n"
                                          "</body>\n"
-                                         "</html>\n");
+                                         "</html>\n",
+                                         is_blog ? site_footer : "");
 	// clang-format on
 
 	if (fprintf_ret < 0) {
