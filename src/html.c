@@ -295,11 +295,13 @@ static char* __html_post_list(page_header_arr* header_arr)
 		    pos, buf_size - (pos - buf),
 		    // clang-format off
 			"<li>\n"
-				"<span class=\"post-list-date\">%s</span>\n"
-        		    	"<a href=\"%s\">%s</a>\n"
+				"<a href=\"%s\">\n"
+					"<span class=\"post-list-date\">%s</span>\n"
+					"<span class=\"post-list-title\">%s</span>\n"
+				"</a>\n"
         		"</li>\n",
 		    // clang-format on
-		    created_date, header_arr->elems[i]->meta.path, header_arr->elems[i]->title);
+		    header_arr->elems[i]->meta.path, created_date, header_arr->elems[i]->title);
 		pos += offset;
 	}
 
