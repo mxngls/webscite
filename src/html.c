@@ -100,19 +100,23 @@ int html_init_templates(void)
 	htm_block header_block = { 0 };
 	htm_block footer_block = { 0 };
 
-	// load head
+	// load head (required)
 	if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/head.htm", &head_block) != 0) {
 		goto error;
 	}
 
-	// load header
-	if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/header.htm", &header_block) != 0) {
-		goto error;
+	// load header (optional)
+	if (access(_SITE_BLOCK_DIR_PATH "/header.htm", F_OK) == 0) {
+		if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/header.htm", &header_block) != 0) {
+			goto error;
+		}
 	}
 
-	// load footer
-	if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/footer.htm", &footer_block) != 0) {
-		goto error;
+	// load footer (optional)
+	if (access(_SITE_BLOCK_DIR_PATH "/footer.htm", F_OK) == 0) {
+		if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/footer.htm", &footer_block) != 0) {
+			goto error;
+		}
 	}
 
 	site_head = head_block.content;
@@ -348,12 +352,12 @@ int html_create_page(
             "    <title>%s</title>\n"
             "</head>\n"
             "<body>\n"
-	    "    %s\n"
+	    "%s"
 	    "    <div id=\"post\" class=\"content\">\n"
             "        <main>\n"
 	    "            <article id=\"post-main\">\n",
 	    // clang-format on
-	    site_head, header->title, site_header);
+	    site_head, header->title, site_header ? site_header : "");
 
 	// if blog then add post list
 	char* post_list = NULL;
@@ -382,7 +386,7 @@ int html_create_page(
                                          "    %s\n"
                                          "</body>\n"
                                          "</html>\n",
-                                         is_blog ? site_footer : "");
+                                         is_blog && site_footer ? site_footer : "");
 	// clang-format on
 
 	if (fprintf_ret < 0) {
