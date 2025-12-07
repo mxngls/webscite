@@ -6,6 +6,21 @@ CC = clang
 
 SRC_DIR = src/
 
+# Site configuration (override these as needed)
+_SITE_EXT_SOURCE_DIR ?= content
+_SITE_EXT_TARGET_DIR ?= docs
+_SITE_EXT_GIT_DIR ?= .git
+_SITE_EXT_SITE_INDEX ?= index.htm
+_SITE_EXT_BLOG_INDEX ?= index.htm
+_SITE_EXT_EXEMPT_EXTRA ?= \"work.htm\",\"contact.htm\"
+
+# Feed configuration
+_SITE_EXT_TITLE ?= SITE_TITLE
+_SITE_EXT_AUTHOR ?= AUTHOR_NAME
+_SITE_EXT_FEED_ID ?= 00000000-0000-0000-0000-000000000000
+_SITE_EXT_HOST ?= EXAMPLE.COM
+_SITE_EXT_TAG_SCHEME_DATE ?= 2025-01-01
+
 LIBGIT2_VERSION = v1.9.0
 LIBGIT2_DIR = deps/libgit2
 LIBGIT2_BUILD = $(LIBGIT2_DIR)/build
