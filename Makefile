@@ -32,7 +32,7 @@ LDLIBS = $(LIBGIT2_LIB) $(SYSTEM_LIBS)
 LDFLAGS = -L/usr/local/lib
 
 CFLAGS = \
--std=c99 \
+-std=c11 \
 -Wall \
 -Wextra \
 -Wconversion \
