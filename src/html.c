@@ -178,7 +178,7 @@ static char* __html_create_content(
 	if (include_back_ref) {
 		// append "l" to existing ".htm" extension
 		char blog_main[_SITE_PATH_MAX] = "";
-		snprintf(blog_main, sizeof(blog_main), "%sl", _SITE_EXT_BLOG_INDEX);
+		snprintf(blog_main, sizeof(blog_main), "/%sl", _SITE_EXT_BLOG_INDEX);
 
 		offset = snprintf(
 		    pos, buf_size - (pos - buf), "<a id=\"post-back-ref\" href=\"%s\">‹ back</a>\n",
