@@ -2,6 +2,7 @@
 #include <fts.h>
 #include <ftw.h>
 #include <libgen.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -420,7 +421,7 @@ int main(void)
 			snprintf(curr_dir, PATH_MAX, "%s", dir);
 
 			free(dir);
-			curr_fts_level = ftsentp->fts_level;
+			curr_fts_level = (int)ftsentp->fts_level;
 		}
 
 		if (ftsentp->fts_info == FTS_D) {
