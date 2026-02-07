@@ -18,6 +18,10 @@ char* site_head = NULL;
 char* site_header = NULL;
 char* site_footer = NULL;
 
+// style sheet blob hashes
+char style_sheet_hash[8] = { '\0' };
+char reset_sheet_hash[8] = { '\0' };
+
 // compare by creation time
 static int __qsort_cb(const void* a, const void* b)
 {
@@ -334,6 +338,19 @@ int html_create_page(
 
 	int fprintf_ret = 0;
 
+	// append abbreviated Git blob hashes to circumvent overly aggressive browser cashing
+	// (Safari)
+	if (style_sheet_hash[0] == '\0' || reset_sheet_hash[0] == '\0') {
+		char style_sheet_path[] = _SITE_EXT_SOURCE_DIR "/style.css";
+		if (ghist_blob_hash(style_sheet_hash, sizeof(style_sheet_hash), style_sheet_path)) {
+			return -1;
+		}
+		char reset_sheet_path[] = _SITE_EXT_SOURCE_DIR "/reset.css";
+		if (ghist_blob_hash(reset_sheet_hash, sizeof(reset_sheet_hash), reset_sheet_path)) {
+			return -1;
+		}
+	}
+
 	fprintf_ret = fprintf(
 	    dest_file,
 	    // clang-format off
@@ -342,6 +359,8 @@ int html_create_page(
             "<head>\n"
             "%s"
             "    <title>%s</title>\n"
+	    "    <link rel=\"stylesheet\" href=\"/reset.css?=%s\" type=\"text/css\">\n"
+	    "    <link rel=\"stylesheet\" href=\"/style.css?=%s\" type=\"text/css\">\n"
             "</head>\n"
             "<body>\n"
 	    "    <div id=\"content\">\n"
@@ -349,7 +368,8 @@ int html_create_page(
             "    <main>\n"
             "        <article id=\"post\">\n",
 	    // clang-format on
-	    site_head, header->title, site_header ? site_header : "");
+	    site_head, header->title, style_sheet_hash, reset_sheet_hash,
+	    site_header ? site_header : "");
 
 	// if blog then add post list
 	char* post_list = NULL;

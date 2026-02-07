@@ -27,7 +27,7 @@ const char* get_error_format(site_error_t error)
 	case SITE_ERROR_EMPTY_CONTENT:		return "Page has no content. Aborting.";
 	case SITE_ERROR_NO_PAGES_FOUND:		return "No pages to convert. Aborting";
 	
-	case SITE_ERROR_GIT_OPERATION:		return "Git operation failed";
+	case SITE_ERROR_GIT_OPERATION:		return "Git operation failed: %s";
 
 	case SITE_ERROR_PAGE_NUMBER_EXCEEDED:	return "Number of max. pages exceeded. Increase _SITE_PAGES_ again.";
 

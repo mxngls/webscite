@@ -311,6 +311,10 @@ static page_result* __process_page_file(
 	if ((tracked = ghist_find_by_path(source_path))) {
 		header->meta.created = tracked->creat_time;
 		header->meta.modified = tracked->mod_time;
+
+		if (ghist_blob_hash(header->meta.hash, sizeof(header->meta.hash), tracked->file_path)) {
+			goto error;
+		}
 	}
 	// parse page header
 	int header_len = -1;
@@ -576,6 +580,7 @@ cleanup:
 	// tracked files (renamed files are to be cleaned
 	for (int i = 0; i < tracked_arr.len; i++) {
 		free(tracked_arr.files[i].file_path);
+		free(tracked_arr.files[i].oid);
 	}
 	free(tracked_arr.files);
 

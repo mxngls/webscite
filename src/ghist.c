@@ -6,6 +6,7 @@
 
 #include "error.h"
 #include "ghist.h"
+#include "git2/odb.h"
 #include "page.h"
 
 typedef struct {
@@ -288,4 +289,32 @@ cleanup:
 	free(rename_arr.records);
 
 	return res;
+}
+
+// obtain blob hash
+int ghist_blob_hash(char* hash, size_t hash_len, char* file_path)
+{
+	git_error* err = NULL;
+	git_oid oid;
+
+	if (git_odb_hashfile(&oid, file_path, GIT_OBJECT_BLOB)) {
+		err = (git_error*)git_error_last();
+		goto error;
+	}
+	if (!git_oid_tostr(hash, hash_len, &oid)) {
+		err = (git_error*)git_error_last();
+		goto error;
+	}
+
+error:
+	if (err) {
+		char err_msg[256];
+		snprintf(
+		    err_msg, sizeof(err_msg), "%d | Received file_path parameter: %s\n%s",
+		    err->klass, file_path, err->message);
+		ERRORF(SITE_ERROR_GIT_OPERATION, err_msg);
+		return -1;
+	}
+
+	return 0;
 }

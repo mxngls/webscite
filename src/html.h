@@ -12,6 +12,7 @@
 typedef struct {
 	long len;
 	char* content;
+	char* hash;
 } htm_block;
 
 // initialize templates

@@ -11,6 +11,7 @@ typedef struct {
 	char* title;
 	struct {
 		char path[_SITE_PATH_MAX];
+		char hash[8]; // NOTE: currently unused
 		int64_t created;
 		int64_t modified;
 	} meta;
