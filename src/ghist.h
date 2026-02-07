@@ -7,7 +7,6 @@ typedef struct {
 	char* file_path;
 	git_time_t creat_time;
 	git_time_t mod_time;
-	char* oid;
 } tracked_file;
 
 typedef struct {

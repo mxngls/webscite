@@ -329,11 +329,13 @@ int html_create_page(
     bool include_title,
     bool include_date)
 {
+	int res = 0;
+
 	// html destination
 	FILE* dest_file = fopen(output_path, "w");
 	if (dest_file == NULL) {
 		ERRORF(SITE_ERROR_FILE_CREATE, output_path);
-		return -1;
+		goto error;
 	}
 
 	int fprintf_ret = 0;
@@ -343,11 +345,11 @@ int html_create_page(
 	if (style_sheet_hash[0] == '\0' || reset_sheet_hash[0] == '\0') {
 		char style_sheet_path[] = _SITE_EXT_SOURCE_DIR "/style.css";
 		if (ghist_blob_hash(style_sheet_hash, sizeof(style_sheet_hash), style_sheet_path)) {
-			return -1;
+			goto error;
 		}
 		char reset_sheet_path[] = _SITE_EXT_SOURCE_DIR "/reset.css";
 		if (ghist_blob_hash(reset_sheet_hash, sizeof(reset_sheet_hash), reset_sheet_path)) {
-			return -1;
+			goto error;
 		}
 	}
 
@@ -375,8 +377,7 @@ int html_create_page(
 	char* post_list = NULL;
 	if (is_blog) {
 		if ((post_list = __html_post_list(header_arr)) == NULL) {
-			fclose(dest_file);
-			return -1;
+			goto error;
 		}
 	};
 
@@ -385,8 +386,7 @@ int html_create_page(
 	if ((html_content = __html_create_content(
 		 header, plain_content, post_list, include_back_ref, include_title, include_date))
 	    == NULL) {
-		fclose(dest_file);
-		return -1;
+		goto error;
 	}
 	fprintf_ret = fprintf(dest_file, "%s", html_content);
 
@@ -403,13 +403,20 @@ int html_create_page(
 
 	if (fprintf_ret < 0) {
 		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
-		fclose(dest_file);
-		return -1;
+		goto error;
 	}
 
-	fclose(dest_file);
+	goto cleanup;
 
-	return 0;
+error:
+	res = -1;
+
+cleanup:
+	if (dest_file) {
+		fclose(dest_file);
+	}
+
+	return res;
 }
 
 // escape html entities

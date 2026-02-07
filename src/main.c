@@ -312,7 +312,8 @@ static page_result* __process_page_file(
 		header->meta.created = tracked->creat_time;
 		header->meta.modified = tracked->mod_time;
 
-		if (ghist_blob_hash(header->meta.hash, sizeof(header->meta.hash), tracked->file_path)) {
+		if (ghist_blob_hash(
+			header->meta.hash, sizeof(header->meta.hash), tracked->file_path)) {
 			goto error;
 		}
 	}
@@ -580,7 +581,6 @@ cleanup:
 	// tracked files (renamed files are to be cleaned
 	for (int i = 0; i < tracked_arr.len; i++) {
 		free(tracked_arr.files[i].file_path);
-		free(tracked_arr.files[i].oid);
 	}
 	free(tracked_arr.files);
 
