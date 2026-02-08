@@ -370,7 +370,7 @@ int html_create_page(
             "    <main>\n"
             "        <article id=\"post\">\n",
 	    // clang-format on
-	    site_head, header->title, style_sheet_hash, reset_sheet_hash,
+	    site_head, header->title, reset_sheet_hash, style_sheet_hash,
 	    site_header ? site_header : "");
 
 	// if blog then add post list
