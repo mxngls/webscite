@@ -161,7 +161,6 @@ static char* __html_create_content(
     page_header* header,
     char* page_content,
     char* additional_content,
-    bool include_back_ref,
     bool include_title,
     bool include_date)
 {
@@ -178,17 +177,6 @@ static char* __html_create_content(
 
 	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
 	pos += offset;
-
-	if (include_back_ref) {
-		// append "l" to existing ".htm" extension
-		char blog_main[_SITE_PATH_MAX] = "";
-		snprintf(blog_main, sizeof(blog_main), "/%sl", _SITE_EXT_BLOG_INDEX);
-
-		offset = snprintf(
-		    pos, buf_size - (pos - buf), "<a id=\"post-back-ref\" href=\"%s\">‹ back</a>\n",
-		    blog_main);
-		pos += offset;
-	}
 
 	if (include_title) {
 		offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", header->title);
@@ -340,6 +328,14 @@ int html_create_page(
 
 	int fprintf_ret = 0;
 
+	// if blog then add post list
+	char* post_list = NULL;
+	if (is_blog) {
+		if ((post_list = __html_post_list(header_arr)) == NULL) {
+			goto error;
+		}
+	};
+
 	// append abbreviated Git blob hashes to circumvent overly aggressive browser cashing
 	// (Safari)
 	if (style_sheet_hash[0] == '\0' || reset_sheet_hash[0] == '\0') {
@@ -367,39 +363,48 @@ int html_create_page(
             "<body>\n"
 	    "    <div id=\"content\">\n"
 	    "    %s"
-            "    <main>\n"
-            "        <article id=\"post\">\n",
+            "    <main>\n",
 	    // clang-format on
 	    site_head, header->title, reset_sheet_hash, style_sheet_hash,
 	    site_header ? site_header : "");
 
-	// if blog then add post list
-	char* post_list = NULL;
-	if (is_blog) {
-		if ((post_list = __html_post_list(header_arr)) == NULL) {
-			goto error;
-		}
-	};
+	if (include_back_ref) {
+		char blog_main[_SITE_PATH_MAX] = "";
+		snprintf(
+		    blog_main, sizeof(blog_main), "/%sl", // append "l" to existing ".htm" extension
+		    _SITE_EXT_BLOG_INDEX);
+		fprintf_ret = fprintf(
+		    dest_file, "    <a id=\"post-back-ref\" href=\"%s\">back</a>\n", blog_main);
+	}
 
 	// write content
 	char* html_content = NULL;
-	if ((html_content = __html_create_content(
-		 header, plain_content, post_list, include_back_ref, include_title, include_date))
+	if ((html_content
+	     = __html_create_content(header, plain_content, post_list, include_title, include_date))
 	    == NULL) {
 		goto error;
 	}
-	fprintf_ret = fprintf(dest_file, "%s", html_content);
+
+	fprintf_ret = fprintf(
+	    dest_file,
+	    // clang-format off
+	    "    <article id=\"post\">\n"
+	    "        %s\n" 
+	    "    </article>\n",
+	    // clang-format on
+	    html_content);
 
 	// close html
-	// clang-format off
-        fprintf_ret = fprintf(dest_file, "            </article>\n"
-                                         "        </main>\n"
-                                         "        %s\n"
-                                         "    </div>\n"
-                                         "</body>\n"
-                                         "</html>\n",
-                                         is_blog && site_footer ? site_footer : "");
-	// clang-format on
+	fprintf_ret = fprintf(
+	    dest_file,
+	    // clang-format off
+            "        </main>\n"
+            "        %s\n"
+            "    </div>\n"
+            "</body>\n"
+            "</html>\n",
+	    // clang-format on
+	    is_blog && site_footer ? site_footer : "");
 
 	if (fprintf_ret < 0) {
 		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
