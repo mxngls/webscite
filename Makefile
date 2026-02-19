@@ -12,7 +12,7 @@ _SITE_EXT_TARGET_DIR ?= docs
 _SITE_EXT_GIT_DIR ?= .git
 _SITE_EXT_SITE_INDEX ?= index.htm
 _SITE_EXT_BLOG_INDEX ?= index.htm
-_SITE_EXT_EXEMPT_EXTRA ?= \"work.htm\",\"contact.htm\"
+_SITE_EXT_EXEMPT_EXTRA ?= \"about.htm\"
 
 # Feed configuration
 _SITE_EXT_TITLE ?= SITE_TITLE

@@ -516,9 +516,12 @@ int main(void)
 					break;
 				}
 			}
-			bool include_back_ref = !is_exempted;
+			bool include_back_ref
+			    = !strcmp(ftsentp->fts_name, "about.htm") || !is_exempted ? true
+										      : false;
 			bool include_title = !is_exempted;
-			bool include_date = strcmp(ftsentp->fts_name, "index.htm");
+			bool include_date
+			    = !is_exempted && strcmp(ftsentp->fts_name, "index.htm") ? true : false;
 
 			if ((page_result = __process_page_file(
 				 &page_file, curr_dir, &header_arr, false, include_back_ref,
