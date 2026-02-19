@@ -374,7 +374,8 @@ int html_create_page(
 		    blog_main, sizeof(blog_main), "/%sl", // append "l" to existing ".htm" extension
 		    _SITE_EXT_BLOG_INDEX);
 		fprintf_ret = fprintf(
-		    dest_file, "    <a id=\"post-back-ref\" href=\"%s\">back</a>\n", blog_main);
+		    dest_file, "    <span id=\"post-back-ref\"><a  href=\"%s\">back</a></span>\n",
+		    blog_main);
 	}
 
 	// write content
