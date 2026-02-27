@@ -1,0 +1,44 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: macos-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build site
+        run: |
+          make deploy \
+            SYSTEM_LIBS='-lz -liconv -framework CoreFoundation -framework Security' \
+            _SITE_EXT_HOST='webscite.com' \
+            _SITE_EXT_TITLE='WebCsite' \
+            _SITE_EXT_AUTHOR='Maximilian Hoenig' \
+            _SITE_EXT_FEED_ID='0fe4447d-b1b0-4e6c-8482-2a8d838d2b5b' \
+            _SITE_EXT_TAG_SCHEME_DATE='2025-10-27'
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

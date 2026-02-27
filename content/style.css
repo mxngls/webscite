@@ -1,0 +1,27 @@
+body {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 0 10px;
+  line-height: 1.6;
+}
+
+#post-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+#post-list li {
+  margin: 8px 0;
+}
+
+#post-list .date {
+  display: inline-block;
+  width: 50px;
+  margin-right: 12px;
+}
+
+#post-date {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+}

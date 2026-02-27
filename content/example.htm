@@ -1,0 +1,41 @@
+title: Introducing WebCsite
+
+<p>
+This document describes the custom static site generator and its idiosyncrasies that, as of November 2025, generates the files served as my current homepage. I wrote it out of frustration with the overwhelming complexity imposed upon users of common popular alternatives. Overly simple on purpose, it does nothing more than generate an index.html file and populate it with a couple of blog posts that together form the core of the user's blog. It lacks many features that you might expect, most prominently tags. In addition, posts are written using HTML tags directly instead of relying on some intermediate format like Markdown. I intend to elaborate on my rationale for doing so some other time.
+</p>
+
+<p>
+For our site to successfully build, the following two prerequisites exist:
+</p>
+<ol>
+<li>A <code>content/</code> directory that is tracked by Git</li>
+<li><em>At least</em> one file in said directory called index.htm that serves as our blog's entry point</li>
+</ol>
+
+<p>
+Content that is to be served as an HTML page has to reside in our <code>content/</code> directory and have a <code>.htm</code> extension<a id="fn1-ref" href="#fn1"><sup>1</sup></a>. Everything else will simply be copied as is. The default output directory containing all of our site's content will end up in <code>docs/</code> by default. Both directories are customizable through passing appropriate values to the underlying Makefile used to build our site. <code>_SITE_EXT_SOURCE_DIR</code> can be set to decide upon an alternative content path while <code>_SITE_EXT_TARGET_DIR</code> will set a different output path.
+</p>
+
+<p>
+<code>.htm</code> files inside the <code>content/</code> directory use HTML tags and are expected to have one header field: title. Both field names are followed by a colon, some white space and finally the field value. These headers are separated by a single newline.
+</p>
+
+<p>
+A certain degree of templating can be achieved through placing .htm files inside the <code>content/blocks/</code> directory. In order to use these (building) blocks during the build process, the source of the static site generator itself has to be modified. <code>menu.htm</code> is included as a reference for how to do so.
+</p>
+
+<p>
+I am sure inventive minds can come up with a more convoluted approach, but the currently intended way to use Csite is either to place content directly alongside its source or keep it as a plain dependency of the repository that contains the source of the website to be built. For the latter case, using git-subtree might be a viable approach.
+</p>
+
+<p>
+To build pages just run <code>make</code>.
+</p>
+
+<p>
+For everything else, the actual source code might tell a better story than this README ever could. Csite is intended to be used as <a href="http://forum.malleable.systems/t/ink-switch-malleable-software-essay/340/5">malleable</a> software. Its purpose is to serve as a starting point to being customize able as much as needed with as little friction as possible.
+</p>
+
+<aside id="fn1">
+<p><sup>1</sup> <a href="https://en.wikipedia.org/wiki/HTML#Naming_conventions">Historically</a>, the <code>.htm</code> extension was used to denote proper HTML files on MS-DOS and thus still has great editor support today. We went with the three-letter abbreviation for posts as it conveys the intention that these are not yet complete HTML files. <a href="#fn1-ref">&#8617;</a></p>
+</aside>
