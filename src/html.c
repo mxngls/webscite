@@ -25,13 +25,13 @@ char reset_sheet_hash[8] = { '\0' };
 // compare by creation time
 static int __qsort_cb(const void* a, const void* b)
 {
-	page_header* header_a = *(page_header**)a;
-	page_header* header_b = *(page_header**)b;
+	page_entry* entry_a = *(page_entry**)a;
+	page_entry* entry_b = *(page_entry**)b;
 
 	// descending order (newest first)
-	if (header_a->meta.created > header_b->meta.created)
+	if (entry_a->meta.created > entry_b->meta.created)
 		return -1;
-	if (header_a->meta.created < header_b->meta.created)
+	if (entry_a->meta.created < entry_b->meta.created)
 		return 1;
 	return 0;
 }
@@ -158,7 +158,7 @@ void html_cleanup_templates(void)
 
 // package content
 static char* __html_create_content(
-    page_header* header,
+    page_entry* entry,
     char* page_content,
     char* additional_content,
     bool include_title,
@@ -179,7 +179,7 @@ static char* __html_create_content(
 	pos += offset;
 
 	if (include_title) {
-		offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", header->title);
+		offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", entry->title);
 		pos += offset;
 	}
 
@@ -200,8 +200,8 @@ static char* __html_create_content(
 	if (include_date) {
 		char created_date[256];
 		char created_formatted_date[256];
-		if (header->meta.created) {
-			ghist_format_ts("%Y-%m-%d", created_date, header->meta.created);
+		if (entry->meta.created) {
+			ghist_format_ts("%Y-%m-%d", created_date, entry->meta.created);
 			snprintf(
 			    created_formatted_date, sizeof(created_formatted_date), "Created on %s",
 			    created_date);
@@ -211,11 +211,11 @@ static char* __html_create_content(
 		}
 
 		// add updated date at the end if present
-		int has_modified = header->meta.modified != 0;
+		int has_modified = entry->meta.modified != 0;
 		if (has_modified) {
 			char modified_date[256];
 			char modified_formatted_date[256];
-			ghist_format_ts("%Y-%m-%d", modified_date, header->meta.modified);
+			ghist_format_ts("%Y-%m-%d", modified_date, entry->meta.modified);
 			snprintf(
 			    modified_formatted_date, sizeof(modified_formatted_date),
 			    "Last updated on %s", modified_date);
@@ -252,7 +252,7 @@ static char* __html_create_content(
 }
 
 // create HTML list of all posts
-static char* __html_post_list(page_header_arr* header_arr)
+static char* __html_post_list(page_entry_arr* entry_arr)
 {
 
 	size_t buf_size = 48 * 1024;
@@ -263,7 +263,7 @@ static char* __html_post_list(page_header_arr* header_arr)
 	}
 
 	// sort by creation time
-	qsort(header_arr->elems, header_arr->len, sizeof(page_header*), __qsort_cb);
+	qsort(entry_arr->elems, entry_arr->len, sizeof(page_entry*), __qsort_cb);
 
 	char* pos = buf;
 	int offset = 0;
@@ -275,10 +275,10 @@ static char* __html_post_list(page_header_arr* header_arr)
 	    "    <ul>\n");
 	pos += offset;
 
-	for (int i = 0; i < header_arr->len; i++) {
+	for (int i = 0; i < entry_arr->len; i++) {
 		char created_date[256];
-		if (header_arr->elems[i]->meta.created) {
-			ghist_format_ts("%Y", created_date, header_arr->elems[i]->meta.created);
+		if (entry_arr->elems[i]->meta.created) {
+			ghist_format_ts("%Y", created_date, entry_arr->elems[i]->meta.created);
 		} else {
 			snprintf(created_date, sizeof(created_date), "%s", "DRAFT");
 		}
@@ -293,7 +293,7 @@ static char* __html_post_list(page_header_arr* header_arr)
 				"</a>\n"
         		"</li>\n",
 		    // clang-format on
-		    header_arr->elems[i]->meta.path, created_date, header_arr->elems[i]->title);
+		    entry_arr->elems[i]->meta.path, created_date, entry_arr->elems[i]->title);
 		pos += offset;
 	}
 
@@ -308,10 +308,10 @@ static char* __html_post_list(page_header_arr* header_arr)
 
 // create plain html file
 int html_create_page(
-    page_header* header,
+    page_entry* entry,
     char* plain_content,
     char* output_path,
-    page_header_arr* header_arr,
+    page_entry_arr* entry_arr,
     bool is_blog,
     bool include_back_ref,
     bool include_title,
@@ -331,7 +331,7 @@ int html_create_page(
 	// if blog then add post list
 	char* post_list = NULL;
 	if (is_blog) {
-		if ((post_list = __html_post_list(header_arr)) == NULL) {
+		if ((post_list = __html_post_list(entry_arr)) == NULL) {
 			goto error;
 		}
 	};
@@ -365,7 +365,7 @@ int html_create_page(
 	    "    %s"
             "    <main>\n",
 	    // clang-format on
-	    site_head, header->title, reset_sheet_hash, style_sheet_hash,
+	    site_head, entry->title, reset_sheet_hash, style_sheet_hash,
 	    site_header ? site_header : "");
 
 	if (include_back_ref) {
@@ -381,7 +381,7 @@ int html_create_page(
 	// write content
 	char* html_content = NULL;
 	if ((html_content
-	     = __html_create_content(header, plain_content, post_list, include_title, include_date))
+	     = __html_create_content(entry, plain_content, post_list, include_title, include_date))
 	    == NULL) {
 		goto error;
 	}

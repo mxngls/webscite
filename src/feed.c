@@ -6,7 +6,7 @@
 #include "ghist.h"
 #include "html.h"
 
-int create_feed(char* output_path, page_header_arr* header_arr)
+int create_feed(char* output_path, page_entry_arr* entry_arr)
 {
 
 	int res = 0;
@@ -24,7 +24,7 @@ int create_feed(char* output_path, page_header_arr* header_arr)
 	char feed_modified[feed_modified_size];
 	ghist_format_ts(
 	    "%Y-%m-%dT00:00:00Z", feed_modified,
-	    header_arr->elems[header_arr->len - 1]->meta.modified);
+	    entry_arr->elems[entry_arr->len - 1]->meta.modified);
 
 	res = fprintf(
 	    dest_file,
@@ -44,23 +44,23 @@ int create_feed(char* output_path, page_header_arr* header_arr)
 	    dest_file, "    <id>tag:www.%s,%s:%s</id>\n", _SITE_EXT_HOST, _SITE_EXT_TAG_SCHEME_DATE,
 	    _SITE_EXT_FEED_ID);
 
-	for (int i = 0; i < header_arr->len; i++) {
+	for (int i = 0; i < entry_arr->len; i++) {
 		// header_arr and content_arr grow together so no additonal checks necessary here
-		page_header header = *header_arr->elems[i];
+		page_entry entry = *entry_arr->elems[i];
 
 		size_t created_formatted_size = 256;
 		char created_formatted[created_formatted_size];
-		ghist_format_ts("%Y-%m-%dT00:00:00Z", created_formatted, header.meta.created);
+		ghist_format_ts("%Y-%m-%dT00:00:00Z", created_formatted, entry.meta.created);
 
 		char modified_formatted[256];
-		if (header.meta.modified) {
+		if (entry.meta.modified) {
 			ghist_format_ts(
-			    "%Y-%m-%dT00:00:00Z", modified_formatted, header.meta.modified);
+			    "%Y-%m-%dT00:00:00Z", modified_formatted, entry.meta.modified);
 		}
 
-		char* escaped_content = html_escape_content(content_arr.elems[i]);
+		char* escaped_content = html_escape_content(entry_arr->elems[i]->content);
 		if (escaped_content == NULL) {
-			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, header.meta.path)
+			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
 			return -1;
 		}
 
@@ -76,8 +76,8 @@ int create_feed(char* output_path, page_header_arr* header_arr)
 		    "        <published>%s</published>\n"
 		    "        <updated>%s</updated>\n"
 		    "    </entry>\n",
-		    header.title, escaped_content, header.meta.path, _SITE_EXT_HOST,
-		    _SITE_EXT_TAG_SCHEME_DATE, header.meta.path, created_formatted,
+		    entry.title, escaped_content, entry.meta.path, _SITE_EXT_HOST,
+		    _SITE_EXT_TAG_SCHEME_DATE, entry.meta.path, created_formatted,
 		    modified_formatted);
 
 		free(escaped_content);

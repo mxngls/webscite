@@ -9,40 +9,22 @@
 
 typedef struct {
 	char* title;
+	char* content;
 	struct {
 		char path[_SITE_PATH_MAX];
 		char hash[8]; // NOTE: currently unused
 		int64_t created;
 		int64_t modified;
 	} meta;
-} page_header;
+} page_entry;
 
 typedef struct {
-	page_header* elems[_SITE_PAGES_MAX];
+	page_entry* elems[_SITE_PAGES_MAX];
 	int len;
-} page_header_arr;
-
-typedef struct {
-	char* content;
-	struct {
-		char path[_SITE_PATH_MAX];
-	} meta;
-} page_content;
-
-typedef struct {
-	char* elems[_SITE_PAGES_MAX];
-	int len;
-} page_content_arr;
-
-extern page_content_arr content_arr;
-
-typedef struct {
-	page_header* header;
-	char* content;
-} page_result;
+} page_entry_arr;
 
 // work with pages
-int page_parse_header(FILE*, page_header*);
+int page_parse_header(FILE*, page_entry*);
 int page_parse_content(FILE*, char*, size_t, char*);
 
 #endif // PAGE_H

@@ -7,14 +7,14 @@
 #include "error.h"
 #include "page.h"
 
-int page_parse_header(FILE* file, page_header* header)
+int page_parse_header(FILE* file, page_entry* entry)
 {
 	char* line = NULL;
 	size_t len = 0;
 	ssize_t read = 0;
 	ssize_t readt = 0;
 
-	header->title = NULL;
+	entry->title = NULL;
 
 	bool in_header = true;
 	while (in_header && (readt += read = getline(&line, &len, file))) {
@@ -49,12 +49,12 @@ int page_parse_header(FILE* file, page_header* header)
 		}
 
 		if (strncmp(key, "title", read) == 0)
-			header->title = strdup(value);
+			entry->title = strdup(value);
 	}
 
 	free(line);
 
-	if (!header->title)
+	if (!entry->title)
 		return -1;
 
 	return (int)readt;

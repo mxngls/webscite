@@ -15,11 +15,6 @@
 const char* index_excempt_arr[] = { _SITE_EXEMPT_LIST };
 #define _SITE_EXEMPT_LIST_COUNT (int)((sizeof(index_excempt_arr) / sizeof(index_excempt_arr[0])))
 
-page_content_arr content_arr = {
-	.elems = { 0 },
-	.len = 0,
-};
-
 tracked_file_arr tracked_arr = {
 	.files = NULL,
 	.len = 0,
@@ -41,14 +36,7 @@ static char* __extract_ext_prefix(char*);
 static char* __extract_dir(char*, bool);
 
 // main routine
-static page_result* __process_page_file(
-    page_info*,
-    char*,
-    page_header_arr*,
-    bool,
-    bool,
-    bool,
-    bool);
+static page_entry* __process_page_file(page_info*, char*, page_entry_arr*, bool, bool, bool, bool);
 
 static int __copy_file(char* from, char* to)
 {
@@ -249,31 +237,21 @@ static FTS* __init_fts(char* source)
 	return ftsp;
 }
 
-static page_result* __process_page_file(
+static page_entry* __process_page_file(
     page_info* page_file,
     char* curr_dir,
-    page_header_arr* header_arr,
+    page_entry_arr* entry_arr,
     bool is_blog,
     bool include_back_ref,
     bool include_title,
     bool include_date)
 {
-	page_result* res = NULL;
-
-	if ((res = malloc(sizeof(page_result))) == NULL) {
-		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-		return NULL;
-	}
-	res->header = NULL;
-	res->content = NULL;
-
+	page_entry* entry_res = NULL;
+	page_entry* entry = NULL;
+	char* content = NULL;
 	char* source_path = page_file->path;
 	FILE* source_file = NULL;
-
 	tracked_file* tracked = NULL;
-
-	page_header* header = NULL;
-	char* content = NULL;
 
 	if ((source_file = fopen(page_file->path, "r")) == NULL) {
 		ERRORF(SITE_ERROR_FILE_READ, source_path);
@@ -295,8 +273,8 @@ static page_result* __process_page_file(
 		    page_name);
 	}
 
-	// handle page headers
-	if ((header = calloc(1, sizeof(page_header))) == NULL) {
+	// handle page entries
+	if ((entry = calloc(1, sizeof(page_entry))) == NULL) {
 		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
 		goto error;
 	}
@@ -307,65 +285,68 @@ static page_result* __process_page_file(
 	} else {
 		snprintf(page_href, sizeof(page_href), "%s/%s", curr_dir, page_name);
 	}
-	strncpy(header->meta.path, page_href, _SITE_PATH_MAX - 1);
+	strncpy(entry->meta.path, page_href, _SITE_PATH_MAX - 1);
 	if ((tracked = ghist_find_by_path(source_path))) {
-		header->meta.created = tracked->creat_time;
-		header->meta.modified = tracked->mod_time;
+		entry->meta.created = tracked->creat_time;
+		entry->meta.modified = tracked->mod_time;
 
 		if (ghist_blob_hash(
-			header->meta.hash, sizeof(header->meta.hash), tracked->file_path)) {
+			entry->meta.hash, sizeof(entry->meta.hash), tracked->file_path)) {
 			goto error;
 		}
 	}
 	// parse page header
-	int header_len = -1;
-	if ((header_len = page_parse_header(source_file, header)) == -1) {
+	int entry_len = -1;
+	if ((entry_len = page_parse_header(source_file, entry)) == -1) {
 		ERRORF(SITE_ERROR_MISSING_HEADERS, source_path);
 		goto error;
 	};
 
 	// parse page content                                                       }
-	size_t content_size = page_file->size - header_len;
+	size_t content_size = page_file->size - entry_len;
 	content = malloc(content_size + 1);
 	if (content == NULL) {
 		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
 		goto error;
 	}
-	if ((page_parse_content(source_file, source_path, content_size, content)) != 0) {
+	entry->content = content;
+	if ((page_parse_content(source_file, source_path, content_size, entry->content)) != 0) {
 		goto error;
 	};
 
 	// create whole Html file for page
 	if (html_create_page(
-		header, content, page_path, header_arr, is_blog, include_back_ref, include_title,
+		entry, content, page_path, entry_arr, is_blog, include_back_ref, include_title,
 		include_date)
 	    != 0) {
 		goto error;
 	};
 
-	res->header = header;
-	res->content = content;
-	header = NULL; // transfer ownership; freed in main
-	content = NULL; // transfer ownership; freed in main
+	entry_res = entry;
+
+	// transfer ownership; freed in main
+	content = NULL;
+	entry = NULL;
 
 	goto cleanup;
 
 error:
-	if (res)
-		free(res);
-	res = NULL;
+	if (entry_res)
+		free(entry_res);
+	entry_res = NULL;
 
 cleanup:
-	if (header) {
-		free((char*)header->title);
-		free(header);
-	}
 	if (content)
 		free(content);
+	if (entry) {
+		free(entry->title);
+		free(entry->content);
+		free(entry);
+	}
 	if (source_file)
 		fclose(source_file);
 
-	return res;
+	return entry_res;
 }
 
 int main(void)
@@ -375,7 +356,7 @@ int main(void)
 	FTSENT* ftsentp = NULL;
 	char* path_prefix = NULL;
 
-	page_header_arr header_arr = {
+	page_entry_arr entry_arr = {
 		.elems = { 0 },
 		.len = 0,
 	};
@@ -479,7 +460,7 @@ int main(void)
 				.path = ftsentp->fts_path,
 				.size = ftsentp->fts_statp->st_size,
 			};
-			page_result* page_result;
+			page_entry* entry_res;
 
 			// skip blocks
 			if (strcmp(ftsentp->fts_parent->fts_name, "blocks") == 0) {
@@ -503,7 +484,7 @@ int main(void)
 				continue;
 			}
 
-			if (header_arr.len >= _SITE_PAGES_MAX) {
+			if (entry_arr.len >= _SITE_PAGES_MAX) {
 				ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
 				res = -1;
 				goto cleanup;
@@ -523,8 +504,8 @@ int main(void)
 			bool include_date
 			    = !is_exempted && strcmp(ftsentp->fts_name, "index.htm") ? true : false;
 
-			if ((page_result = __process_page_file(
-				 &page_file, curr_dir, &header_arr, false, include_back_ref,
+			if ((entry_res = __process_page_file(
+				 &page_file, curr_dir, &entry_arr, false, include_back_ref,
 				 include_title, include_date))
 			    == NULL) {
 				res = -1;
@@ -532,32 +513,43 @@ int main(void)
 			} else {
 				// only add blog posts to the post list, not exempted pages
 				if (!is_exempted) {
-					header_arr.elems[header_arr.len] = page_result->header;
-					header_arr.len++;
-
-					content_arr.elems[content_arr.len] = page_result->content;
-					content_arr.len++;
+					entry_arr.elems[entry_arr.len] = entry_res;
+					entry_arr.len++;
+				} else {
+					// index entry not needed so just free
+					if (entry_res) {
+						free(entry_res->title);
+						free(entry_res->content);
+						free(entry_res);
+					}
 				}
-
-				free(page_result);
 			}
 		}
 	}
 
 	// fill custom blog entry point with list of post entries
+	page_entry* entry_res = NULL;
 	if (found_index
-	    && (__process_page_file(&index, curr_dir, &header_arr, true, false, false, false))
-		== NULL) {
+	    && ((entry_res
+		 = __process_page_file(&index, curr_dir, &entry_arr, true, false, false, false))
+		== NULL)) {
 		res = -1;
 		goto cleanup;
+	} else {
+		// index entry not needed so just free
+		if (entry_res) {
+			free(entry_res->title);
+			free(entry_res->content);
+			free(entry_res);
+		}
 	}
 
 	// Only create feed if there are blog posts
-	if (header_arr.len > 0
+	if (entry_arr.len > 0
 	    && create_feed(
 		   _SITE_EXT_TARGET_DIR "/"
 					"feed.atom",
-		   &header_arr)
+		   &entry_arr)
 		== -1) {
 		res = -1;
 		goto cleanup;
@@ -570,15 +562,11 @@ cleanup:
 	if (path_prefix)
 		free(path_prefix);
 
-	// headers (header_arr.elem allocated statically
-	for (int i = 0; i < header_arr.len; i++) {
-		free((char*)header_arr.elems[i]->title);
-		free(header_arr.elems[i]);
-	}
-
-	// page content (content_arr.elem allocated statically
-	for (int i = 0; i < content_arr.len; i++) {
-		free(content_arr.elems[i]);
+	// entries (entry_arr.elem allocated statically
+	for (int i = 0; i < entry_arr.len; i++) {
+		free((char*)entry_arr.elems[i]->title);
+		free((char*)entry_arr.elems[i]->content);
+		free(entry_arr.elems[i]);
 	}
 
 	// tracked files (renamed files are to be cleaned
