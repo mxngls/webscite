@@ -1,0 +1,158 @@
+title: Getting started
+
+<site-toc></site-toc>
+
+<p
+	>Webscite needs two things to build a site: a
+	<code>content/</code> directory tracked by Git, and at least one file inside
+	it called <code>index.htm</code> which will serve as the entry point for our
+	website.<site-footnote
+		>The <code>.htm</code> extension is deliberate.
+		<a href="https://en.wikipedia.org/wiki/HTML#Naming_conventions"
+			>Historically</a
+		>, it denoted HTML files on MS-DOS and still has good editor support
+		today. We use the three-letter form to signal that these are not yet
+		complete HTML documents.</site-footnote
+	>
+	Footnotes or a table of contents like the one shown above can be generated
+	using simple web components. So, contrary to the phrase proudly displayed on
+	similar minimalist-looking blogs: This website proudly
+	<i>serves</i> JavaScript.
+</p>
+
+<p>
+	Any file with a <code>.htm</code> extension inside
+	<code>content/</code> will be processed into a full HTML page. Everything
+	else&mdash;CSS, JavaScript, images&mdash;is copied through as-is.
+</p>
+
+<p>A minimal valid example page looks like this:</p>
+
+<pre><code>  title: My First Post
+
+  &lt;p&gt;Hello from webscite.&lt;/p&gt;
+</code></pre>
+
+<p>
+	Each <code>.htm</code> file starts with a couple of newline delimited header
+	lines. The <code>title</code> field is <strong>required</strong>. After the
+	headers and a blank line, the rest of the file is plain HTML that forms the
+	body of your post.
+</p>
+
+<p> To build your site, run: </p>
+
+<pre><code>make build</code></pre>
+
+<p>
+	The generated files end up in <code>docs/</code> by default. Open
+	<code>docs/index.html</code> in a browser and you should see your index page
+	along with a list of posts.
+</p>
+
+<p>
+	<strong>Important:</strong> Webscite derives all post metadata from Git. A
+	<code>.htm</code> file that has not been committed will still be built into
+	an HTML page, but it will be labeled "DRAFT" and have no date. To publish a
+	post properly you must <code>git commit</code> it. The creation date is
+	taken from the file's first commit, and the modification date from its most
+	recent.
+</p>
+
+<h2>Building blocks</h2>
+
+<p>
+	Files inside <code>content/blocks/</code> act as shared templates that get
+	included in every page.<site-footnote
+		>The most notable exception currently being the footer that is only
+		included inside the site index.</site-footnote
+	>
+	Three blocks are supported:
+</p>
+
+<ul>
+	<li
+		><code>head.htm</code> &mdash; injected into <code>&lt;head&gt;</code>.
+		Use it for meta tags, stylesheets, and scripts.</li
+	>
+	<li
+		><code>header.htm</code> &mdash; placed at the top of
+		<code>&lt;body&gt;</code>. Good for a navigation bar using the
+		<code>&lt;site-menu&gt;</code> custom element.</li
+	>
+	<li
+		><code>footer.htm</code> &mdash; placed at the bottom. Useful for links
+		to your RSS feed or other site-wide content.</li
+	>
+</ul>
+
+<h2>Configuration</h2>
+
+<p>
+	The build is driven by a Makefile with overridable variables for things like
+	source and output directories, site title, author name, and domain. See the
+	<code>Makefile</code> itself for the full list of options and their
+	defaults.
+</p>
+
+<h2>Special Pages</h2>
+
+<h3>Exempt pages</h3>
+
+<p>
+	Not every page belongs in the post list. Pages like "About" should exist on
+	the site but not show up alongside dated posts. Add their filenames to
+	<code>_SITE_EXT_EXEMPT_EXTRA</code> in the Makefile:
+</p>
+
+<pre><code>  _SITE_EXT_EXEMPT_EXTRA ?= "about.htm"</code></pre>
+
+<p>
+	Exempt pages are built normally but excluded from the index listing and the
+	Atom feed. They also don't display dates.
+</p>
+
+<h3>Drafts</h3>
+
+<p>
+	Any <code>.htm</code> files placed in <code>content/drafts/</code> are
+	ignored during the build. Use this directory to keep work-in-progress posts
+	out of your published site.
+</p>
+
+<h3>Link posts</h3>
+
+<p>
+	Not every post needs its own page. Adding a <code>link</code> header field
+	turns a post into a link post&mdash;it appears in the index list but points
+	to an external URL instead of a local page:
+</p>
+
+<pre><code>  title: Some interesting article
+  link: https://example.com/article
+
+  &lt;p&gt;A comment about the article.&lt;/p&gt;
+</code></pre>
+
+<p>
+	In the post list, link posts get a
+	<code>data-page-kind="link"</code> attribute on their
+	<code>&lt;li&gt;</code> element, so you can visually distinguish them from
+	regular posts using CSS. In the Atom feed, link posts appear as entries with
+	the external URL but no inline content.
+</p>
+
+<h2>Atom feed</h2>
+
+<p>
+	Webscite generates an Atom feed at <code>/feed.atom</code> automatically. It
+	includes every non-exempt post on your site. Feed metadata like title,
+	author, and domain are configured through the Makefile. The feed also
+	requires a unique UUID that stays the same even if your domain changes.
+	Webscite combines it with your host and a site creation date into a
+	<a href="https://www.rfc-editor.org/rfc/rfc4151">TAG URI</a> for the feed's
+	<a href="https://www.rfc-editor.org/rfc/rfc4287#section-4.2.6"
+		><code>&lt;id&gt;</code> element</a
+	>, which is how feed readers tell your feed apart from every other feed on
+	the web.
+</p>

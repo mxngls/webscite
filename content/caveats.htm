@@ -1,0 +1,67 @@
+title: Technical Caveats
+
+<site-toc></site-toc>
+
+<h2>Content format</h2>
+
+<p>
+	Only <code>.htm</code> files are recognized as content. There is no Markdown
+	support, no tags, no categories, and no theme system. Posts are written in
+	plain HTML. This is intentional.
+</p>
+
+<h2>Platform support</h2>
+
+<p>
+	Webscite currently builds on macOS and FreeBSD. The file traversal code uses
+	<code>fts_open</code> and <code>fts_read</code> from
+	<code>&lt;fts.h&gt;</code>, which is a POSIX/BSD interface not available on
+	Windows. Other POSIX dependencies include <code>realpath</code>,
+	<code>getline</code>, <code>dirname</code>, <code>access</code>, and
+	<code>strlcat</code>. Linux support is possible but untested.<site-footnote
+		><code>strlcat</code> is a BSD extension. It is available on macOS and
+		some Linux distributions but is not part of the C standard
+		library.</site-footnote
+	>
+</p>
+
+<h2>Build requirements</h2>
+
+<p>
+	The Makefile hardcodes <code>clang</code> as the compiler of choice. On
+	macOS, available system libraries may differ &mdash;use the included
+	<code>macos-build.sh</code> wrapper which substitutes the correct framework
+	flags.
+</p>
+
+<h2>Git requirement</h2>
+
+<p>
+	The <code>content/</code> directory must live inside a Git repository.
+	Creation and modification dates are read from Git history, and static asset
+	cache busting uses Git blob hashes. Files that have not been committed yet
+	show as "DRAFT" with no date.
+</p>
+<p>
+	Git integration is provided by <a href="https://libgit2.org">libgit2</a>,
+	which gets downloaded and compiled as a static library on first build (this
+	requires CMake and <code>wget</code>).
+</p>
+
+<h2>Hard limits</h2>
+
+<p> A few limits are set at compile time in the source: </p>
+
+<ul>
+	<li>Maximum <strong>50 pages</strong> total</li>
+	<li>File paths capped at <strong>100 characters</strong></li>
+	<li
+		>HTML content buffer of <strong>48 KB</strong> per page&mdash;longer
+		posts will overflow</li
+	>
+</ul>
+
+<p>
+	All three are defined as constants and can be raised by editing the source
+	directly.
+</p>
