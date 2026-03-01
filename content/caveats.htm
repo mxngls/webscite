@@ -39,8 +39,11 @@ title: Technical Caveats
 <p>
 	The <code>content/</code> directory must live inside a Git repository.
 	Creation and modification dates are read from Git history, and static asset
-	cache busting uses Git blob hashes. Files that have not been committed yet
-	show as "DRAFT" with no date.
+	cache busting uses Git blob hashes. Abbreviated hashes are appended as query
+	parameters to <code>reset.css</code>, <code>style.css</code>, and
+	<code>script.js</code>&mdash;these three filenames are expected inside the
+	<code>content/</code> directory. Files that have not been committed yet show
+	as "DRAFT" with no date.
 </p>
 <p>
 	Git integration is provided by <a href="https://libgit2.org">libgit2</a>,
