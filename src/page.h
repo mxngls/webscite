@@ -7,9 +7,18 @@
 #define _SITE_PAGES_MAX 50
 #define _SITE_PATH_MAX	100
 
+typedef enum {
+	PAGE_KIND_POST,
+	PAGE_KIND_LINK,
+} page_kind;
+
 typedef struct {
+	page_kind kind;
 	char* title;
-	char* content;
+	union {
+		char* link;
+		char* content;
+	};
 	struct {
 		char path[_SITE_PATH_MAX];
 		char hash[8]; // NOTE: currently unused

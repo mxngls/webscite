@@ -35,8 +35,9 @@ static int __validate_ext_dirs(char*, char*);
 static char* __extract_ext_prefix(char*);
 static char* __extract_dir(char*, bool);
 
-// main routine
+// main routine and associated function(s)
 static page_entry* __process_page_file(page_info*, char*, page_entry_arr*, bool, bool, bool, bool);
+static void page_entry_free(page_entry** e);
 
 static int __copy_file(char* from, char* to)
 {
@@ -77,6 +78,26 @@ static int __copy_file(char* from, char* to)
 	fclose(to_file);
 
 	return res;
+}
+
+static void page_entry_free(page_entry** e)
+{
+
+	if (e == NULL || *e == NULL) {
+		return;
+	}
+
+	// free individual fields first
+	free((char*)(*e)->title);
+
+	if ((*e)->kind == PAGE_KIND_POST)
+		free((*e)->content);
+	else
+		free((*e)->link);
+
+	e = NULL;
+
+	free(e);
 }
 
 static int __create_dir(char* dir_name)
@@ -302,25 +323,28 @@ static page_entry* __process_page_file(
 		goto error;
 	};
 
-	// parse page content                                                       }
-	size_t content_size = page_file->size - entry_len;
-	content = malloc(content_size + 1);
-	if (content == NULL) {
-		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-		goto error;
-	}
-	entry->content = content;
-	if ((page_parse_content(source_file, source_path, content_size, entry->content)) != 0) {
-		goto error;
-	};
+	// parse page content
+	if (entry->kind == PAGE_KIND_POST) {
+		size_t content_size = page_file->size - entry_len;
+		content = malloc(content_size + 1);
+		if (content == NULL) {
+			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+			goto error;
+		}
+		entry->content = content;
+		if ((page_parse_content(source_file, source_path, content_size, entry->content))
+		    != 0) {
+			goto error;
+		};
 
-	// create whole Html file for page
-	if (html_create_page(
-		entry, content, page_path, entry_arr, is_blog, include_back_ref, include_title,
-		include_date)
-	    != 0) {
-		goto error;
-	};
+		// create whole Html file for page
+		if (html_create_page(
+			entry, content, page_path, entry_arr, is_blog, include_back_ref,
+			include_title, include_date)
+		    != 0) {
+			goto error;
+		};
+	}
 
 	entry_res = entry;
 
@@ -517,11 +541,7 @@ int main(void)
 					entry_arr.len++;
 				} else {
 					// index entry not needed so just free
-					if (entry_res) {
-						free(entry_res->title);
-						free(entry_res->content);
-						free(entry_res);
-					}
+					page_entry_free(&entry_res);
 				}
 			}
 		}
@@ -537,11 +557,7 @@ int main(void)
 		goto cleanup;
 	} else {
 		// index entry not needed so just free
-		if (entry_res) {
-			free(entry_res->title);
-			free(entry_res->content);
-			free(entry_res);
-		}
+		page_entry_free(&entry_res);
 	}
 
 	// Only create feed if there are blog posts
@@ -563,10 +579,9 @@ cleanup:
 		free(path_prefix);
 
 	// entries (entry_arr.elem allocated statically
-	for (int i = 0; i < entry_arr.len; i++) {
-		free((char*)entry_arr.elems[i]->title);
-		free((char*)entry_arr.elems[i]->content);
-		free(entry_arr.elems[i]);
+	page_entry* e = NULL;
+	for (int i = 0; i < entry_arr.len; i++, e = entry_arr.elems[i]) {
+		page_entry_free(&e);
 	}
 
 	// tracked files (renamed files are to be cleaned

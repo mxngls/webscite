@@ -50,6 +50,11 @@ int page_parse_header(FILE* file, page_entry* entry)
 
 		if (strncmp(key, "title", read) == 0)
 			entry->title = strdup(value);
+
+		if (strncmp(key, "link", read) == 0) {
+			entry->link = strdup(value);
+			entry->kind = PAGE_KIND_LINK; // default is PAGE_KIND_POST
+		}
 	}
 
 	free(line);

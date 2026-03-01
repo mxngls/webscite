@@ -293,7 +293,9 @@ static char* __html_post_list(page_entry_arr* entry_arr)
 				"</a>\n"
         		"</li>\n",
 		    // clang-format on
-		    entry_arr->elems[i]->meta.path, created_date, entry_arr->elems[i]->title);
+		    entry_arr->elems[i]->kind == PAGE_KIND_POST ? entry_arr->elems[i]->meta.path
+								: entry_arr->elems[i]->link,
+		    created_date, entry_arr->elems[i]->title);
 		pos += offset;
 	}
 
