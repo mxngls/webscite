@@ -286,13 +286,14 @@ static char* __html_post_list(page_entry_arr* entry_arr)
 		offset = snprintf(
 		    pos, buf_size - (pos - buf),
 		    // clang-format off
-			"<li>\n"
+			"<li data-page-kind=\"%s\">\n"
 				"<a href=\"%s\">\n"
 					"<span class=\"post-list-date\">%s</span>\n"
 					"<span class=\"post-list-title\">%s</span>\n"
 				"</a>\n"
         		"</li>\n",
 		    // clang-format on
+		    entry_arr->elems[i]->kind == PAGE_KIND_POST ? "page" : "link",
 		    entry_arr->elems[i]->kind == PAGE_KIND_POST ? entry_arr->elems[i]->meta.path
 								: entry_arr->elems[i]->link,
 		    created_date, entry_arr->elems[i]->title);
