@@ -279,7 +279,7 @@ static char* __html_post_list(page_entry_arr* entry_arr)
 	for (int i = 0; i < entry_arr->len; i++) {
 		char created_date[256];
 		if (entry_arr->elems[i]->meta.created) {
-			ghist_format_ts("%Y", created_date, entry_arr->elems[i]->meta.created);
+			ghist_format_ts("%b %Y", created_date, entry_arr->elems[i]->meta.created);
 		} else {
 			snprintf(created_date, sizeof(created_date), "%s", "DRAFT");
 		}
