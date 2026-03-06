@@ -113,6 +113,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 			free(feed_content);
 			if (escaped_content == NULL) {
 				ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
+				fclose(dest_file);
 				return -1;
 			}
 
@@ -151,6 +152,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 	}
 
 	res = fprintf(dest_file, "</feed>\n");
+	fclose(dest_file);
 
 	return res;
 }
