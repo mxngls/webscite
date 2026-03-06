@@ -72,7 +72,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 			    "        <content type=\"html\">\n"
 			    "%s"
 			    "        </content>\n"
-			    "        <link href=\"%s\"/>\n"
+			    "        <link href=\"" _SITE_EXT_URL "/%s\"/>\n"
 			    "        <id>tag:www.%s,%s:%s</id>\n"
 			    "        <published>%s</published>\n"
 			    "        <updated>%s</updated>\n"
