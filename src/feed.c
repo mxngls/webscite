@@ -87,13 +87,15 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 			    dest_file,
 			    "    <entry>\n"
 			    "        <title>%s</title>\n"
+			    "        <summary>External link to %s</summary>\n"
 			    "        <link rel=\"alternate\" href=\"%s\"/>\n"
 			    "        <id>tag:www.%s,%s:%s</id>\n"
 			    "        <published>%s</published>\n"
 			    "        <updated>%s</updated>\n"
 			    "    </entry>\n",
-			    entry.title, entry.link, entry.meta.path, _SITE_EXT_HOST,
-			    _SITE_EXT_TAG_SCHEME_DATE, created_formatted, modified_formatted);
+			    entry.title, entry.link, entry.link, _SITE_EXT_HOST,
+			    _SITE_EXT_TAG_SCHEME_DATE, entry.meta.path, created_formatted,
+			    modified_formatted);
 		}
 	}
 
