@@ -6,6 +6,12 @@
 #include "ghist.h"
 #include "html.h"
 
+// custom web components and their standard HTML replacements for feed output
+static const char* feed_tag_map[][2] = {
+	{ "site-footnote", "aside" },
+};
+static const int feed_tag_map_len = sizeof(feed_tag_map) / sizeof(feed_tag_map[0]);
+
 int create_feed(char* output_path, page_entry_arr* entry_arr)
 {
 
@@ -59,7 +65,52 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		}
 
 		if (entry.kind == PAGE_KIND_POST) {
-			char* escaped_content = html_escape_content(entry_arr->elems[i]->content);
+			// replace custom elements with standard HTML for feed readers
+			char* feed_content = strdup(entry_arr->elems[i]->content);
+			if (feed_content == NULL) {
+				ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
+				fclose(dest_file);
+				return -1;
+			}
+			for (int t = 0; t < feed_tag_map_len; t++) {
+				const char* custom = feed_tag_map[t][0];
+				const char* standard = feed_tag_map[t][1];
+
+				char open_tag[64], open_repl[64];
+				snprintf(open_tag, sizeof(open_tag), "<%s", custom);
+				snprintf(open_repl, sizeof(open_repl), "<%s", standard);
+				size_t open_tag_len = strlen(open_tag);
+				size_t open_repl_len = strlen(open_repl);
+
+				char close_tag[64], close_repl[64];
+				snprintf(close_tag, sizeof(close_tag), "</%s", custom);
+				snprintf(close_repl, sizeof(close_repl), "</%s", standard);
+				size_t close_tag_len = strlen(close_tag);
+				size_t close_repl_len = strlen(close_repl);
+
+				// replace closing tags first to avoid partial match
+				// e.g. `</site-footnote` matching opening `<site-footnote`
+				char* pos = feed_content;
+				while ((pos = strstr(pos, close_tag)) != NULL) {
+					memcpy(pos, close_repl, close_repl_len);
+					memmove(
+					    pos + close_repl_len, pos + close_tag_len,
+					    strlen(pos + close_tag_len) + 1);
+					pos += close_repl_len;
+				}
+
+				pos = feed_content;
+				while ((pos = strstr(pos, open_tag)) != NULL) {
+					memcpy(pos, open_repl, open_repl_len);
+					memmove(
+					    pos + open_repl_len, pos + open_tag_len,
+					    strlen(pos + open_tag_len) + 1);
+					pos += open_repl_len;
+				}
+			}
+
+			char* escaped_content = html_escape_content(feed_content);
+			free(feed_content);
 			if (escaped_content == NULL) {
 				ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
 				return -1;
