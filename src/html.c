@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -287,7 +288,7 @@ static char* __html_post_list(page_entry_arr* entry_arr)
 		offset = snprintf(
 		    pos, buf_size - (pos - buf),
 		    // clang-format off
-			"<li data-page-kind=\"%s\" data-post-created=\"%lld\" data-post-updated=\"%lld\">\n"
+			"<li data-page-kind=\"%s\" data-post-created=\"%" PRId64 "\" data-post-updated=\"%" PRId64 "\">\n"
 				"<a href=\"%s\">\n"
 					"<span class=\"post-list-date\">%s</span>\n"
 					"<span class=\"post-list-title\">%s</span>\n"
