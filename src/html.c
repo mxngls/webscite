@@ -287,7 +287,7 @@ static char* __html_post_list(page_entry_arr* entry_arr)
 		offset = snprintf(
 		    pos, buf_size - (pos - buf),
 		    // clang-format off
-			"<li data-page-kind=\"%s\">\n"
+			"<li data-page-kind=\"%s\" data-post-created=\"%lld\" data-post-updated=\"%lld\">\n"
 				"<a href=\"%s\">\n"
 					"<span class=\"post-list-date\">%s</span>\n"
 					"<span class=\"post-list-title\">%s</span>\n"
@@ -295,6 +295,7 @@ static char* __html_post_list(page_entry_arr* entry_arr)
         		"</li>\n",
 		    // clang-format on
 		    entry_arr->elems[i]->kind == PAGE_KIND_POST ? "page" : "link",
+		    entry_arr->elems[i]->meta.created, entry_arr->elems[i]->meta.modified,
 		    entry_arr->elems[i]->kind == PAGE_KIND_POST ? entry_arr->elems[i]->meta.path
 								: entry_arr->elems[i]->link,
 		    created_date, entry_arr->elems[i]->title);
@@ -340,8 +341,8 @@ int html_create_page(
 		}
 	};
 
-	// append abbreviated Git blob hashes to circumvent overly aggressive browser cashing
-	// (Safari)
+	// append abbreviated Git blob hashes to circumvent overly aggressive
+	// browser cashing (Safari)
 	if (style_sheet_hash[0] == '\0' || reset_sheet_hash[0] == '\0' || script_hash[0] == '\0') {
 		char style_sheet_path[] = _SITE_EXT_SOURCE_DIR "/style.css";
 		if (ghist_blob_hash(style_sheet_hash, sizeof(style_sheet_hash), style_sheet_path)) {
@@ -380,7 +381,8 @@ int html_create_page(
 	if (include_back_ref) {
 		char blog_main[_SITE_PATH_MAX] = "";
 		snprintf(
-		    blog_main, sizeof(blog_main), "/%sl", // append "l" to existing ".htm" extension
+		    blog_main, sizeof(blog_main),
+		    "/%sl", // append "l" to existing ".htm" extension
 		    _SITE_EXT_BLOG_INDEX);
 		fprintf_ret = fprintf(
 		    dest_file, "    <span id=\"post-back-ref\"><a  href=\"%s\">back</a></span>\n",
