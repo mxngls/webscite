@@ -12,7 +12,7 @@
 typedef struct {
 	char* old_path;
 	char* new_path;
-	git_time_t creat_time;
+	git_time_t rename_time;
 } rename_record;
 
 typedef struct {
@@ -37,12 +37,12 @@ static void __add_rename(char* old_path, char* new_path, git_time_t timestamp)
 	rename_arr.records[rename_arr.len] = (rename_record) {
 		.old_path = strdup(old_path),
 		.new_path = strdup(new_path),
-		.creat_time = timestamp,
+		.rename_time = timestamp,
 	};
 	rename_arr.len++;
 }
 
-static void __trace_rename(
+static int __trace_rename(
     char* final_path,
     git_time_t* creation_time,
     git_time_t* modification_time)
@@ -54,9 +54,8 @@ static void __trace_rename(
 		if (strcmp(rename_arr.records[i].new_path, current_path) != 0)
 			continue;
 
-		*modification_time = *modification_time == 0 ? rename_arr.records[i].creat_time
+		*modification_time = *modification_time == 0 ? rename_arr.records[i].rename_time
 							     : *modification_time;
-		*creation_time = rename_arr.records[i].creat_time;
 
 		// free old path name
 		free(current_path);
@@ -66,7 +65,18 @@ static void __trace_rename(
 		i = rename_arr.len;
 	}
 
+	tracked_file* final_entry = NULL;
+	if ((final_entry = ghist_find_by_path(current_path)) == NULL) {
+		fprintf(stderr, "Error: no matching tracked entry found for: %s\n", current_path);
+		free(current_path);
+		return -1;
+	}
+
+	*creation_time = final_entry->creat_time;
+
 	free(current_path);
+
+	return 0;
 }
 
 static int __get_times_cb(
@@ -117,10 +127,6 @@ static int __get_times_cb(
 		}
 		return 0;
 	}
-
-	// regular file change
-	if (access(file_path, F_OK) != 0)
-		return 0;
 
 	tracked_file* tracked = ghist_find_by_path(file_path);
 	if (tracked) {
@@ -247,7 +253,10 @@ int ghist_times(char* path_prefix)
 	for (int i = 0; i < tracked_arr.len; i++) {
 		git_time_t creation_time = 0;
 		git_time_t last_rename_time = 0;
-		__trace_rename(tracked_arr.files[i].file_path, &creation_time, &last_rename_time);
+		if (__trace_rename(
+			tracked_arr.files[i].file_path, &creation_time, &last_rename_time)) {
+			return -1;
+		};
 		if (creation_time > 0) {
 			tracked_arr.files[i].creat_time = creation_time;
 		}
