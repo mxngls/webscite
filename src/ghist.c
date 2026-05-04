@@ -50,6 +50,8 @@ static int __trace_rename(
 
 	char* current_path = strdup(final_path);
 
+	// Walk every rename entry; TODO: a hash map would obviously be better here	than the
+	// current O(n^2) based lookup
 	for (int i = rename_arr.len - 1; i >= 0; i--) {
 		if (strcmp(rename_arr.records[i].new_path, current_path) != 0)
 			continue;
@@ -65,6 +67,7 @@ static int __trace_rename(
 		i = rename_arr.len;
 	}
 
+	// resolve initial creation
 	tracked_file* final_entry = NULL;
 	if ((final_entry = ghist_find_by_path(current_path)) == NULL) {
 		fprintf(stderr, "Error: no matching tracked entry found for: %s\n", current_path);
@@ -134,7 +137,7 @@ static int __get_times_cb(
 		return 0;
 	}
 
-	// new file
+	// new file or initial version of renamed revision
 	tracked_file new_file = {
 		.file_path = strdup(file_path),
 		.creat_time = author_time,
