@@ -12,9 +12,6 @@
 #include "html.h"
 #include "page.h"
 
-const char* index_excempt_arr[] = { _SITE_EXEMPT_LIST };
-#define _SITE_EXEMPT_LIST_COUNT (int)((sizeof(index_excempt_arr) / sizeof(index_excempt_arr[0])))
-
 tracked_file_arr tracked_arr = {
 	.files = NULL,
 	.len = 0,
@@ -36,7 +33,7 @@ static char* __extract_ext_prefix(char*);
 static char* __extract_dir(char*, bool);
 
 // main routine and associated function(s)
-static page_entry* __process_page_file(page_info*, char*, page_entry_arr*, bool, bool, bool, bool);
+static page_entry* __process_page_file(page_info*, char*, bool, bool, bool);
 static void page_entry_free(page_entry** e);
 
 static int __copy_file(char* from, char* to)
@@ -261,9 +258,7 @@ static FTS* __init_fts(char* source)
 static page_entry* __process_page_file(
     page_info* page_file,
     char* curr_dir,
-    page_entry_arr* entry_arr,
-    bool is_blog,
-    bool include_back_ref,
+    bool is_index,
     bool include_title,
     bool include_date)
 {
@@ -339,8 +334,7 @@ static page_entry* __process_page_file(
 
 		// create whole Html file for page
 		if (html_create_page(
-			entry, content, page_path, entry_arr, is_blog, include_back_ref,
-			include_title, include_date)
+			entry, content, page_path, is_index, include_title, include_date)
 		    != 0) {
 			goto error;
 		};
@@ -422,7 +416,7 @@ int main(void)
 	char index_name[256] = "\0";
 	char index_path[PATH_MAX] = "\0";
 	page_info index = { .name = index_name, .path = index_path, .size = 0 };
-	bool found_index = false;
+	bool is_index = false;
 
 	while ((ftsentp = fts_read(ftsp)) != NULL) {
 		if (curr_fts_level != ftsentp->fts_level) {
@@ -502,10 +496,7 @@ int main(void)
 				strncpy(index_path, ftsentp->fts_path, PATH_MAX - 1);
 
 				index.size = ftsentp->fts_statp->st_size;
-
-				found_index = true;
-
-				continue;
+				is_index = true;
 			}
 
 			if (entry_arr.len >= _SITE_PAGES_MAX) {
@@ -514,54 +505,28 @@ int main(void)
 				goto cleanup;
 			}
 
-			bool is_exempted = false;
-			for (int i = 0; i < _SITE_EXEMPT_LIST_COUNT; i++) {
-				if (strcmp(ftsentp->fts_name, index_excempt_arr[i]) == 0) {
-					is_exempted = true;
-					break;
-				}
+			// every page as a title and date except the index
+			bool include_title = true;
+			bool include_date = true;
+			if (is_index) {
+				include_title = false;
+				include_date = false;
 			}
-			bool include_back_ref
-			    = !strcmp(ftsentp->fts_name, "about.htm") || !is_exempted ? true
-										      : false;
-			bool include_title = !is_exempted;
-			bool include_date
-			    = !is_exempted && strcmp(ftsentp->fts_name, "index.htm") ? true : false;
 
 			if ((entry_res = __process_page_file(
-				 &page_file, curr_dir, &entry_arr, false, include_back_ref,
-				 include_title, include_date))
+				 &page_file, curr_dir, is_index, include_title, include_date))
 			    == NULL) {
 				res = -1;
 				goto cleanup;
 			} else {
-				// only add blog posts to the post list, not exempted pages
-				if (!is_exempted) {
-					entry_arr.elems[entry_arr.len] = entry_res;
-					entry_arr.len++;
-				} else {
-					// index entry not needed so just free
-					page_entry_free(&entry_res);
-				}
+				entry_arr.elems[entry_arr.len] = entry_res;
+				entry_arr.len++;
 			}
 		}
 	}
 
-	// fill custom blog entry point with list of post entries
-	page_entry* entry_res = NULL;
-	if (found_index
-	    && ((entry_res
-		 = __process_page_file(&index, curr_dir, &entry_arr, true, false, false, false))
-		== NULL)) {
-		res = -1;
-		goto cleanup;
-	} else {
-		// index entry not needed so just free
-		page_entry_free(&entry_res);
-	}
-
 	// Only create feed if there are blog posts
-	if (entry_arr.len > 0
+	if (entry_arr.len > 1
 	    && create_feed(
 		   _SITE_EXT_TARGET_DIR "/"
 					"feed.atom",

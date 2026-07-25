@@ -24,20 +24,6 @@ char style_sheet_hash[8] = { '\0' };
 char reset_sheet_hash[8] = { '\0' };
 char script_hash[8] = { '\0' };
 
-// compare by creation time
-static int __qsort_cb(const void* a, const void* b)
-{
-	page_entry* entry_a = *(page_entry**)a;
-	page_entry* entry_b = *(page_entry**)b;
-
-	// descending order (newest first)
-	if (entry_a->meta.created > entry_b->meta.created)
-		return -1;
-	if (entry_a->meta.created < entry_b->meta.created)
-		return 1;
-	return 0;
-}
-
 // shared template building blocks
 __attribute__((unused)) static int __html_parse_block(const char* block_path, htm_block* block)
 {
@@ -177,7 +163,7 @@ static char* __html_create_content(
 	char* pos = buf;
 	int offset = 0;
 
-	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "<div id=\"post-body\">");
+	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "");
 	pos += offset;
 
 	if (include_title) {
@@ -185,27 +171,13 @@ static char* __html_create_content(
 		pos += offset;
 	}
 
-	// add content
-	offset = snprintf(pos, buf_size - (pos - buf), "%s", page_content);
-	pos += offset;
-
-	// add additional content if provided
-	if (additional_content) {
-		offset = snprintf(pos, buf_size - (pos - buf), "%s", additional_content);
-		pos += offset;
-	}
-
-	// close main content
-	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "</div>");
-	pos += offset;
-
 	if (include_date) {
 		char created_date[256];
 		char created_formatted_date[256];
 		if (entry->meta.created) {
-			ghist_format_ts("%Y-%m-%d", created_date, entry->meta.created);
+			ghist_format_ts("%b %m, %Y", created_date, entry->meta.created);
 			snprintf(
-			    created_formatted_date, sizeof(created_formatted_date), "Created on %s",
+			    created_formatted_date, sizeof(created_formatted_date), "%s",
 			    created_date);
 		} else {
 			snprintf(
@@ -219,8 +191,8 @@ static char* __html_create_content(
 			char modified_formatted_date[256];
 			ghist_format_ts("%Y-%m-%d", modified_date, entry->meta.modified);
 			snprintf(
-			    modified_formatted_date, sizeof(modified_formatted_date),
-			    "Last updated on %s", modified_date);
+			    modified_formatted_date, sizeof(modified_formatted_date), "%s",
+			    modified_date);
 			offset = snprintf(
 			    pos, buf_size - (pos - buf),
 			    // clang-format off
@@ -250,63 +222,18 @@ static char* __html_create_content(
 		}
 	}
 
-	return buf;
-}
-
-// create HTML list of all posts
-static char* __html_post_list(page_entry_arr* entry_arr)
-{
-
-	size_t buf_size = 48 * 1024;
-	char* buf = NULL;
-	if ((buf = malloc(buf_size)) == NULL) {
-		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-		return NULL;
-	}
-
-	// sort by creation time
-	qsort(entry_arr->elems, entry_arr->len, sizeof(page_entry*), __qsort_cb);
-
-	char* pos = buf;
-	int offset = 0;
-
-	// add a list of posts to the index
-	offset = snprintf(
-	    pos, buf_size - (pos - buf),
-	    "<section id=\"post-list\">\n"
-	    "    <ul>\n");
+	// add content
+	offset = snprintf(pos, buf_size - (pos - buf), "%s", page_content);
 	pos += offset;
 
-	for (int i = 0; i < entry_arr->len; i++) {
-		char created_date[256];
-		if (entry_arr->elems[i]->meta.created) {
-			ghist_format_ts("%b %Y", created_date, entry_arr->elems[i]->meta.created);
-		} else {
-			snprintf(created_date, sizeof(created_date), "%s", "DRAFT");
-		}
-
-		offset = snprintf(
-		    pos, buf_size - (pos - buf),
-		    // clang-format off
-			"<li data-page-kind=\"%s\" data-post-created=\"%" PRId64 "\" data-post-updated=\"%" PRId64 "\">\n"
-				"<a href=\"%s\">\n"
-					"<span class=\"post-list-date\">%s</span>\n"
-					"<span class=\"post-list-title\">%s</span>\n"
-				"</a>\n"
-        		"</li>\n",
-		    // clang-format on
-		    entry_arr->elems[i]->kind == PAGE_KIND_POST ? "page" : "link",
-		    entry_arr->elems[i]->meta.created, entry_arr->elems[i]->meta.modified,
-		    entry_arr->elems[i]->kind == PAGE_KIND_POST ? entry_arr->elems[i]->meta.path
-								: entry_arr->elems[i]->link,
-		    created_date, entry_arr->elems[i]->title);
+	// add additional content if provided
+	if (additional_content) {
+		offset = snprintf(pos, buf_size - (pos - buf), "%s", additional_content);
 		pos += offset;
 	}
 
-	offset = snprintf(
-	    pos, buf_size - (pos - buf),
-	    "    </ul>\n"
-	    "</section>\n");
+	// close main content
+	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "");
 	pos += offset;
 
 	return buf;
@@ -317,9 +244,7 @@ int html_create_page(
     page_entry* entry,
     char* plain_content,
     char* output_path,
-    page_entry_arr* entry_arr,
-    bool is_blog,
-    bool include_back_ref,
+    bool is_index,
     bool include_title,
     bool include_date)
 {
@@ -334,14 +259,6 @@ int html_create_page(
 
 	int fprintf_ret = 0;
 
-	// if blog then add post list
-	char* post_list = NULL;
-	if (is_blog) {
-		if ((post_list = __html_post_list(entry_arr)) == NULL) {
-			goto error;
-		}
-	};
-
 	// append abbreviated Git blob hashes to circumvent overly aggressive
 	// browser cashing (Safari)
 	if (style_sheet_hash[0] == '\0' || reset_sheet_hash[0] == '\0' || script_hash[0] == '\0') {
@@ -353,8 +270,8 @@ int html_create_page(
 		if (ghist_blob_hash(reset_sheet_hash, sizeof(reset_sheet_hash), reset_sheet_path)) {
 			goto error;
 		}
-		char script_hash_path[] = _SITE_EXT_SOURCE_DIR "/script.js";
-		if (ghist_blob_hash(script_hash, sizeof(script_hash), script_hash_path)) {
+		char script_path[] = _SITE_EXT_SOURCE_DIR "/script.js";
+		if (ghist_blob_hash(script_hash, sizeof(script_hash), script_path)) {
 			goto error;
 		}
 	}
@@ -367,45 +284,42 @@ int html_create_page(
             "<head>\n"
             "%s"
             "    <title>%s</title>\n"
-	    "    <link rel=\"stylesheet\" href=\"/reset.css?=%s\" type=\"text/css\">\n"
-	    "    <link rel=\"stylesheet\" href=\"/style.css?=%s\" type=\"text/css\">\n"
-	    "    <script src=\"/script.js?=%s\" defer></script>\n"
-            "</head>\n"
-            "<body>\n"
-	    "    <div id=\"content\">\n"
-	    "    %s"
-            "    <main>\n",
+			"    <link rel=\"stylesheet\" href=\"/reset.css?=%s\" type=\"text/css\">\n"
+	    	"    <link rel=\"stylesheet\" href=\"/style.css?=%s\" type=\"text/css\">\n"
+			"    <script src=\"/script.js?=%s\" defer></script>\n"
+        	"</head>\n"
+        	"<body>\n"
+			"    <div id=\"wrapper\">\n"
+	    	"        %s"
+            "        <main id=\"%s\">\n",
 	    // clang-format on
 	    site_head, entry->title, reset_sheet_hash, style_sheet_hash, script_hash,
-	    site_header ? site_header : "");
-
-	if (include_back_ref) {
-		char blog_main[_SITE_PATH_MAX] = "";
-		snprintf(
-		    blog_main, sizeof(blog_main),
-		    "/%sl", // append "l" to existing ".htm" extension
-		    _SITE_EXT_BLOG_INDEX);
-		fprintf_ret = fprintf(
-		    dest_file, "    <span id=\"post-back-ref\"><a  href=\"%s\">back</a></span>\n",
-		    blog_main);
-	}
+	    site_header ? site_header : "", is_index ? "index" : "post");
 
 	// write content
 	char* html_content = NULL;
-	if ((html_content
-	     = __html_create_content(entry, plain_content, post_list, include_title, include_date))
+	if ((html_content = __html_create_content(
+		 entry, plain_content, NULL, // no additional content yet so we pass NULL
+		 include_title, include_date))
 	    == NULL) {
 		goto error;
 	}
 
-	fprintf_ret = fprintf(
-	    dest_file,
-	    // clang-format off
-	    "    <article id=\"post\">\n"
-	    "        %s\n" 
-	    "    </article>\n",
-	    // clang-format on
-	    html_content);
+	if (!is_index) {
+		fprintf_ret = fprintf(
+		    dest_file,
+		    "    <article>\n"
+		    "        %s\n"
+		    "    </article>\n",
+		    html_content);
+	} else {
+		fprintf_ret = fprintf(
+		    dest_file,
+		    "<section id=index>\n"
+		    "    %s\n"
+		    "</section>\n",
+		    html_content);
+	}
 
 	// close html
 	fprintf_ret = fprintf(
@@ -417,7 +331,7 @@ int html_create_page(
             "</body>\n"
             "</html>\n",
 	    // clang-format on
-	    is_blog && site_footer ? site_footer : "");
+	    site_footer);
 
 	if (fprintf_ret < 0) {
 		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
