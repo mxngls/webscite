@@ -87,10 +87,7 @@ static void page_entry_free(page_entry** e)
 	// free individual fields first
 	free((char*)(*e)->title);
 
-	if ((*e)->kind == PAGE_KIND_POST)
-		free((*e)->content);
-	else
-		free((*e)->link);
+	free((*e)->content);
 
 	e = NULL;
 

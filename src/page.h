@@ -17,10 +17,7 @@ typedef enum {
 typedef struct {
 	page_kind kind;
 	char* title;
-	union {
-		char* link;
-		char* content;
-	};
+	char* content;
 	struct {
 		char path[_SITE_PATH_MAX];
 		char hash[8]; // NOTE: currently unused
