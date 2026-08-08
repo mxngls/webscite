@@ -14,10 +14,6 @@
 #define _SITE_EXT_TARGET_DIR "docs"
 #endif
 
-#ifndef _SITE_EXT_SITE_INDEX
-#define _SITE_EXT_SITE_INDEX "index.htm"
-#endif
-
 #ifndef _SITE_EXT_BLOG_INDEX
 #define _SITE_EXT_BLOG_INDEX "index.htm"
 #endif
@@ -25,12 +21,6 @@
 #ifndef _SITE_EXT_GIT_DIR
 #define _SITE_EXT_GIT_DIR ".git"
 #endif
-
-#ifndef _SITE_EXT_EXEMPT_EXTRA
-#define _SITE_EXT_EXEMPT_EXTRA
-#endif
-
-#define _SITE_EXEMPT_LIST _SITE_EXT_SITE_INDEX, _SITE_EXT_BLOG_INDEX, _SITE_EXT_EXEMPT_EXTRA
 
 #ifndef _SITE_EXT_TITLE
 #error "_SITE_EXT_TITLE not defined."
