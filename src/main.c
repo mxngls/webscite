@@ -33,7 +33,7 @@ static char* __extract_ext_prefix(char*);
 static char* __extract_dir(char*, bool);
 
 // main routine and associated function(s)
-static page_entry* __process_page_file(page_info*, char*, bool, bool, bool);
+static page_entry* __process_page_file(page_info*, char*, bool);
 static void page_entry_free(page_entry** e);
 
 static int __copy_file(char* from, char* to)
@@ -255,12 +255,7 @@ static FTS* __init_fts(char* source)
 	return ftsp;
 }
 
-static page_entry* __process_page_file(
-    page_info* page_file,
-    char* curr_dir,
-    bool is_index,
-    bool include_title,
-    bool include_date)
+static page_entry* __process_page_file(page_info* page_file, char* curr_dir, bool is_post)
 {
 	page_entry* entry_res = NULL;
 	page_entry* entry = NULL;
@@ -332,10 +327,13 @@ static page_entry* __process_page_file(
 			goto error;
 		};
 
+		// account for post overrides
+		if (entry->kind != PAGE_KIND_POST) {
+			is_post = false;
+		}
+
 		// create whole Html file for page
-		if (html_create_page(
-			entry, content, page_path, is_index, include_title, include_date)
-		    != 0) {
+		if (html_create_page(entry, content, page_path, is_post) != 0) {
 			goto error;
 		};
 	}
@@ -505,22 +503,17 @@ int main(void)
 				goto cleanup;
 			}
 
-			// every page as a title and date except the index
-			bool include_title = true;
-			bool include_date = true;
-			if (is_index) {
-				include_title = false;
-				include_date = false;
-			}
-
-			if ((entry_res = __process_page_file(
-				 &page_file, curr_dir, is_index, include_title, include_date))
+			if ((entry_res = __process_page_file(&page_file, curr_dir, !is_index))
 			    == NULL) {
 				res = -1;
 				goto cleanup;
 			} else {
 				entry_arr.elems[entry_arr.len] = entry_res;
 				entry_arr.len++;
+			}
+
+			if (is_index) {
+				is_index = false;
 			}
 		}
 	}

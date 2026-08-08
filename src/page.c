@@ -48,19 +48,27 @@ int page_parse_header(FILE* file, page_entry* entry)
 			value = NULL;
 		}
 
-		if (strncmp(key, "title", read) == 0)
+		if (strncmp(key, "title", read) == 0) {
 			entry->title = strdup(value);
+		}
 
+		// NOTE: unused
 		if (strncmp(key, "link", read) == 0) {
 			entry->link = strdup(value);
 			entry->kind = PAGE_KIND_LINK; // default is PAGE_KIND_POST
+		}
+
+		// manual post override
+		if (strncmp(key, "is_post", read) == 0 && (strncmp(value, "no", 2) == 0)) {
+			entry->kind = PAGE_KIND_NONE;
 		}
 	}
 
 	free(line);
 
-	if (!entry->title)
+	if (entry->kind == PAGE_KIND_POST && !entry->title) {
 		return -1;
+	}
 
 	return (int)readt;
 }

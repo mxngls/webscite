@@ -2,9 +2,11 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/_types/_ino64_t.h>
 #include <unistd.h>
 
 #include <sys/stat.h>
@@ -149,9 +151,10 @@ static char* __html_create_content(
     page_entry* entry,
     char* page_content,
     char* additional_content,
-    bool include_title,
-    bool include_date)
+    bool is_post)
 {
+	bool include_title = is_post;
+	bool include_date = is_post;
 
 	size_t buf_size = 48 * 1024;
 	char* buf = NULL;
@@ -240,13 +243,7 @@ static char* __html_create_content(
 }
 
 // create plain html file
-int html_create_page(
-    page_entry* entry,
-    char* plain_content,
-    char* output_path,
-    bool is_index,
-    bool include_title,
-    bool include_date)
+int html_create_page(page_entry* entry, char* plain_content, char* output_path, bool is_post)
 {
 	int res = 0;
 
@@ -291,21 +288,22 @@ int html_create_page(
         	"<body>\n"
 			"    <div id=\"wrapper\">\n"
 	    	"        %s"
-            "        <main id=\"%s\">\n",
+            "        <main %s>\n",
 	    // clang-format on
 	    site_head, entry->title, reset_sheet_hash, style_sheet_hash, script_hash,
-	    site_header ? site_header : "", is_index ? "index" : "post");
+	    site_header ? site_header : "", is_post ? "id=\"index\"" : "");
 
 	// write content
 	char* html_content = NULL;
 	if ((html_content = __html_create_content(
-		 entry, plain_content, NULL, // no additional content yet so we pass NULL
-		 include_title, include_date))
+		 entry, plain_content,
+		 NULL, // no additional content yet so we pass NULL
+		 is_post))
 	    == NULL) {
 		goto error;
 	}
 
-	if (!is_index) {
+	if (is_post) {
 		fprintf_ret = fprintf(
 		    dest_file,
 		    "    <article>\n"

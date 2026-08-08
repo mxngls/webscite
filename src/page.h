@@ -1,6 +1,7 @@
 #ifndef PAGE_H
 #define PAGE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -8,8 +9,10 @@
 #define _SITE_PATH_MAX	100
 
 typedef enum {
-	PAGE_KIND_POST,
-	PAGE_KIND_LINK,
+	PAGE_KIND_POST, // default
+	PAGE_KIND_LINK, // NOTE: unused
+	PAGE_KIND_INDEX,
+	PAGE_KIND_NONE,
 } page_kind;
 
 typedef struct {
