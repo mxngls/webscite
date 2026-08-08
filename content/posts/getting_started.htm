@@ -106,7 +106,9 @@ title: Getting started
 
 <p>
 	Webscite generates an Atom feed at <code>/feed.atom</code> automatically. It
-	includes every non-exempt post on your site. Feed metadata like title,
+	includes every page that gets generated, which means standalone pages like
+	the index and an about page end up in there next to your posts
+	(<a href="/posts/todos.html">a todo</a>). Feed metadata like title,
 	author, and domain are configured through the Makefile. The feed also
 	requires a unique UUID that stays the same even if your domain changes.
 	Webscite combines it with your host and a site creation date into a
