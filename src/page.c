@@ -60,7 +60,8 @@ int page_parse_header(FILE* file, page_entry* entry)
 
 	free(line);
 
-	if (entry->kind == PAGE_KIND_POST && !entry->title) {
+	// every page needs a title, posts and non-posts alike
+	if (!entry->title) {
 		return -1;
 	}
 

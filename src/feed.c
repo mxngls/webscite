@@ -54,6 +54,11 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		// header_arr and content_arr grow together so no additonal checks necessary here
 		page_entry entry = *entry_arr->elems[i];
 
+		// pages that opted out of being a post stay out of the feed
+		if (entry.kind != PAGE_KIND_POST) {
+			continue;
+		}
+
 		size_t created_formatted_size = 256;
 		char created_formatted[created_formatted_size];
 		ghist_format_ts("%Y-%m-%dT00:00:00Z", created_formatted, entry.meta.created);
@@ -64,91 +69,75 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 			    "%Y-%m-%dT00:00:00Z", modified_formatted, entry.meta.modified);
 		}
 
-		if (entry.kind == PAGE_KIND_POST) {
-			// replace custom elements with standard HTML for feed readers
-			char* feed_content = strdup(entry_arr->elems[i]->content);
-			if (feed_content == NULL) {
-				ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
-				fclose(dest_file);
-				return -1;
-			}
-			for (int t = 0; t < feed_tag_map_len; t++) {
-				const char* custom = feed_tag_map[t][0];
-				const char* standard = feed_tag_map[t][1];
-
-				char open_tag[64], open_repl[64];
-				snprintf(open_tag, sizeof(open_tag), "<%s", custom);
-				snprintf(open_repl, sizeof(open_repl), "<%s", standard);
-				size_t open_tag_len = strlen(open_tag);
-				size_t open_repl_len = strlen(open_repl);
-
-				char close_tag[64], close_repl[64];
-				snprintf(close_tag, sizeof(close_tag), "</%s", custom);
-				snprintf(close_repl, sizeof(close_repl), "</%s", standard);
-				size_t close_tag_len = strlen(close_tag);
-				size_t close_repl_len = strlen(close_repl);
-
-				// replace closing tags first to avoid partial match
-				// e.g. `</site-footnote` matching opening `<site-footnote`
-				char* pos = feed_content;
-				while ((pos = strstr(pos, close_tag)) != NULL) {
-					memcpy(pos, close_repl, close_repl_len);
-					memmove(
-					    pos + close_repl_len, pos + close_tag_len,
-					    strlen(pos + close_tag_len) + 1);
-					pos += close_repl_len;
-				}
-
-				pos = feed_content;
-				while ((pos = strstr(pos, open_tag)) != NULL) {
-					memcpy(pos, open_repl, open_repl_len);
-					memmove(
-					    pos + open_repl_len, pos + open_tag_len,
-					    strlen(pos + open_tag_len) + 1);
-					pos += open_repl_len;
-				}
-			}
-
-			char* escaped_content = html_escape_content(feed_content);
-			free(feed_content);
-			if (escaped_content == NULL) {
-				ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
-				fclose(dest_file);
-				return -1;
-			}
-
-			res = fprintf(
-			    dest_file,
-			    "    <entry>\n"
-			    "        <title>%s</title>\n"
-			    "        <content type=\"html\">\n"
-			    "%s"
-			    "        </content>\n"
-			    "        <link href=\"" _SITE_EXT_URL "/%s\"/>\n"
-			    "        <id>tag:www.%s,%s:%s</id>\n"
-			    "        <published>%s</published>\n"
-			    "        <updated>%s</updated>\n"
-			    "    </entry>\n",
-			    entry.title, escaped_content, entry.meta.path, _SITE_EXT_HOST,
-			    _SITE_EXT_TAG_SCHEME_DATE, entry.meta.path, created_formatted,
-			    modified_formatted);
-
-			free(escaped_content);
-		} else {
-			res = fprintf(
-			    dest_file,
-			    "    <entry>\n"
-			    "        <title>%s</title>\n"
-			    "        <summary>External link to %s</summary>\n"
-			    "        <link rel=\"alternate\" href=\"%s\"/>\n"
-			    "        <id>tag:www.%s,%s:%s</id>\n"
-			    "        <published>%s</published>\n"
-			    "        <updated>%s</updated>\n"
-			    "    </entry>\n",
-			    entry.title, entry.link, entry.link, _SITE_EXT_HOST,
-			    _SITE_EXT_TAG_SCHEME_DATE, entry.meta.path, created_formatted,
-			    modified_formatted);
+		// replace custom elements with standard HTML for feed readers
+		char* feed_content = strdup(entry_arr->elems[i]->content);
+		if (feed_content == NULL) {
+			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
+			fclose(dest_file);
+			return -1;
 		}
+		for (int t = 0; t < feed_tag_map_len; t++) {
+			const char* custom = feed_tag_map[t][0];
+			const char* standard = feed_tag_map[t][1];
+
+			char open_tag[64], open_repl[64];
+			snprintf(open_tag, sizeof(open_tag), "<%s", custom);
+			snprintf(open_repl, sizeof(open_repl), "<%s", standard);
+			size_t open_tag_len = strlen(open_tag);
+			size_t open_repl_len = strlen(open_repl);
+
+			char close_tag[64], close_repl[64];
+			snprintf(close_tag, sizeof(close_tag), "</%s", custom);
+			snprintf(close_repl, sizeof(close_repl), "</%s", standard);
+			size_t close_tag_len = strlen(close_tag);
+			size_t close_repl_len = strlen(close_repl);
+
+			// replace closing tags first to avoid partial match
+			// e.g. `</site-footnote` matching opening `<site-footnote`
+			char* pos = feed_content;
+			while ((pos = strstr(pos, close_tag)) != NULL) {
+				memcpy(pos, close_repl, close_repl_len);
+				memmove(
+				    pos + close_repl_len, pos + close_tag_len,
+				    strlen(pos + close_tag_len) + 1);
+				pos += close_repl_len;
+			}
+
+			pos = feed_content;
+			while ((pos = strstr(pos, open_tag)) != NULL) {
+				memcpy(pos, open_repl, open_repl_len);
+				memmove(
+				    pos + open_repl_len, pos + open_tag_len,
+				    strlen(pos + open_tag_len) + 1);
+				pos += open_repl_len;
+			}
+		}
+
+		char* escaped_content = html_escape_content(feed_content);
+		free(feed_content);
+		if (escaped_content == NULL) {
+			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
+			fclose(dest_file);
+			return -1;
+		}
+
+		res = fprintf(
+		    dest_file,
+		    "    <entry>\n"
+		    "        <title>%s</title>\n"
+		    "        <content type=\"html\">\n"
+		    "%s"
+		    "        </content>\n"
+		    "        <link href=\"" _SITE_EXT_URL "/%s\"/>\n"
+		    "        <id>tag:www.%s,%s:%s</id>\n"
+		    "        <published>%s</published>\n"
+		    "        <updated>%s</updated>\n"
+		    "    </entry>\n",
+		    entry.title, escaped_content, entry.meta.path, _SITE_EXT_HOST,
+		    _SITE_EXT_TAG_SCHEME_DATE, entry.meta.path, created_formatted,
+		    modified_formatted);
+
+		free(escaped_content);
 	}
 
 	res = fprintf(dest_file, "</feed>\n");
