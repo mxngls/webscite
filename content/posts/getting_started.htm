@@ -63,17 +63,14 @@ title: Getting started
 
 <p>
 	Files inside <code>content/blocks/</code> act as shared templates that get
-	included in every page.<site-footnote
-		>The most notable exception currently being the footer that is only
-		included inside the site index.</site-footnote
-	>
-	Three blocks are supported:
+	included in every generated page. Three blocks are supported:
 </p>
 
 <ul>
 	<li
 		><code>head.htm</code> &mdash; injected into <code>&lt;head&gt;</code>.
-		Use it for meta tags, stylesheets, and scripts.</li
+		Use it for meta tags, stylesheets, and scripts. This is the only one of
+		the three that is required; a build without it fails.</li
 	>
 	<li
 		><code>header.htm</code> &mdash; placed at the top of
