@@ -1,20 +1,21 @@
-body {
+#wrapper {
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+
 	margin: 1.2rem 0.6rem;
 	max-width: 700px;
+	min-height: calc(100vh - 2 * (1.2rem));
 }
 
 main {
 	margin: 1rem 0;
+	flex: 1;
 }
 
 pre {
 	overflow-x: auto;
 	margin: 1em 0;
-}
-
-footer {
-	position: absolute;
-	bottom: 1.2rem;
 }
 
 footer ul {
@@ -26,42 +27,9 @@ footer ul {
 	gap: 0.75em;
 }
 
-/* Post List */
-#post-list ul {
-	list-style: none;
-	padding: 0;
-	margin: 0;
-}
-
-#post-list li {
-	margin: 0.25em 0;
-	padding: 0;
-}
-
-#post-list a {
-	display: block;
-	text-decoration: none;
-}
-
-.post-list-title {
-	text-decoration: underline;
-}
-
-.post-list-date {
-	display: inline-block;
-	width: 5em;
-	padding-right: 11px;
-	vertical-align: top;
-}
-
-#post-list li[data-page-kind="link"] .post-list-title::after {
-	content: " ↗";
-	font-family: system-ui, sans-serif;
-}
-
 /* Posts */
-#post-body {
-	margin: 2rem 0;
+#date-updated {
+	display: none;
 }
 
 /* Table of Contents */

@@ -97,49 +97,12 @@ title: Getting started
 
 <h2>Special Pages</h2>
 
-<h3>Exempt pages</h3>
-
-<p>
-	Not every page belongs in the post list. Pages like "About" should exist on
-	the site but not show up alongside dated posts. Add their filenames to
-	<code>_SITE_EXT_EXEMPT_EXTRA</code> in the Makefile:
-</p>
-
-<pre><code>  _SITE_EXT_EXEMPT_EXTRA ?= "about.htm"</code></pre>
-
-<p>
-	Exempt pages are built normally but excluded from the index listing and the
-	Atom feed. They also don't display dates.
-</p>
-
 <h3>Drafts</h3>
 
 <p>
 	Any <code>.htm</code> files placed in <code>content/drafts/</code> are
 	ignored during the build. Use this directory to keep work-in-progress posts
 	out of your published site.
-</p>
-
-<h3>Link posts</h3>
-
-<p>
-	Not every post needs its own page. Adding a <code>link</code> header field
-	turns a post into a link post&mdash;it appears in the index list but points
-	to an external URL instead of a local page:
-</p>
-
-<pre><code>  title: Some interesting article
-  link: https://example.com/article
-
-  &lt;p&gt;A comment about the article.&lt;/p&gt;
-</code></pre>
-
-<p>
-	In the post list, link posts get a
-	<code>data-page-kind="link"</code> attribute on their
-	<code>&lt;li&gt;</code> element, so you can visually distinguish them from
-	regular posts using CSS. In the Atom feed, link posts appear as entries with
-	the external URL but no inline content.
 </p>
 
 <h2>Atom feed</h2>
