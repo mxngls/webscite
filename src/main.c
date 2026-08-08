@@ -311,29 +311,26 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir, boo
 	};
 
 	// parse page content
-	if (entry->kind == PAGE_KIND_POST) {
-		size_t content_size = page_file->size - entry_len;
-		content = malloc(content_size + 1);
-		if (content == NULL) {
-			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-			goto error;
-		}
-		entry->content = content;
-		if ((page_parse_content(source_file, source_path, content_size, entry->content))
-		    != 0) {
-			goto error;
-		};
-
-		// account for post overrides
-		if (entry->kind != PAGE_KIND_POST) {
-			is_post = false;
-		}
-
-		// create whole Html file for page
-		if (html_create_page(entry, content, page_path, is_post) != 0) {
-			goto error;
-		};
+	size_t content_size = page_file->size - entry_len;
+	content = malloc(content_size + 1);
+	if (content == NULL) {
+		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+		goto error;
 	}
+	entry->content = content;
+	if ((page_parse_content(source_file, source_path, content_size, entry->content)) != 0) {
+		goto error;
+	};
+
+	// account for post overrides
+	if (entry->kind != PAGE_KIND_POST) {
+		is_post = false;
+	}
+
+	// create whole Html file for page
+	if (html_create_page(entry, content, page_path, is_post) != 0) {
+		goto error;
+	};
 
 	entry_res = entry;
 
