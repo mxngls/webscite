@@ -10,7 +10,6 @@
 
 typedef enum {
 	PAGE_KIND_POST, // default
-	PAGE_KIND_LINK, // NOTE: unused
 	PAGE_KIND_INDEX,
 	PAGE_KIND_NONE,
 } page_kind;
