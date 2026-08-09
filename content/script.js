@@ -24,8 +24,7 @@ class SiteFootnote extends HTMLElement {
 
 	processContent() {
 		const contentContainer =
-			document.getElementById("post-body") ??
-			document.getElementsByTagName("main").item(0);
+			document.getElementById("post-body") ?? document.getElementsByTagName("main").item(0);
 		if (!contentContainer) {
 			throw new Error(
 				`${SITE_FOOTNOTE_TAGNAME}: Content container to append footnotes to not found`
@@ -34,17 +33,12 @@ class SiteFootnote extends HTMLElement {
 
 		const footnoteContainer = document.getElementById("footnotes");
 		if (!footnoteContainer || !this.footnoteContainer) {
-			this.footnoteContainer = this.initContainer(
-				contentContainer,
-				footnoteContainer
-			);
+			this.footnoteContainer = this.initContainer(contentContainer, footnoteContainer);
 		}
 		const content = this.innerHTML.trim();
 
 		if (!content) {
-			console.warn(
-				`${SITE_FOOTNOTE_TAGNAME}: Empty footnote content, skipping`
-			);
+			console.warn(`${SITE_FOOTNOTE_TAGNAME}: Empty footnote content, skipping`);
 			this.remove();
 			return;
 		}
@@ -75,23 +69,19 @@ class SiteFootnote extends HTMLElement {
 
 	addFootnote(content) {
 		const li = document.createElement("li");
-		const p = document.createElement("p");
 		const a = document.createElement("a");
 
 		li.id = `footnote-${this.footnoteNumber}`;
-		p.innerHTML = content;
+		li.innerHTML = content;
 		a.classList.add("footnote-backlink");
 		a.href = `#footnote-reference-${this.footnoteNumber}`;
 		a.innerText = "\u21a9\ufe0e";
 
-		li.appendChild(p);
-		p.appendChild(a);
+		li.appendChild(a);
 
 		const ol = this.footnoteContainer.getElementsByTagName("ol").item(0);
 		if (!ol) {
-			throw new Error(
-				`${SITE_FOOTNOTE_TAGNAME}: Footnote list not found`
-			);
+			throw new Error(`${SITE_FOOTNOTE_TAGNAME}: Footnote list not found`);
 		}
 
 		ol.appendChild(li);
@@ -102,10 +92,6 @@ class SiteFootnote extends HTMLElement {
 			footnoteContainer = document.createElement("div");
 			footnoteContainer.id = "footnotes";
 			footnoteContainer.appendChild(document.createElement("ol"));
-
-			const hr = document.createElement("hr");
-
-			contentContainer.appendChild(hr);
 			contentContainer.appendChild(footnoteContainer);
 		}
 
@@ -122,11 +108,9 @@ const SITE_TOC_MIN_DEPTH = 1;
 class SiteToc extends HTMLElement {
 	connectedCallback() {
 		if (document.readyState === "loading") {
-			document.addEventListener(
-				"DOMContentLoaded",
-				() => this.processContent(),
-				{ once: true }
-			);
+			document.addEventListener("DOMContentLoaded", () => this.processContent(), {
+				once: true,
+			});
 		} else {
 			this.processContent();
 		}
@@ -134,8 +118,7 @@ class SiteToc extends HTMLElement {
 
 	processContent() {
 		const container =
-			document.getElementById("post-body") ??
-			document.getElementsByTagName("main").item(0);
+			document.getElementById("post-body") ?? document.getElementsByTagName("main").item(0);
 
 		if (!container) {
 			this.remove();
