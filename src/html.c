@@ -286,12 +286,12 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path, 
 			"    <script src=\"/script.js?=%s\" defer></script>\n"
         	"</head>\n"
         	"<body>\n"
-			"    <div id=\"wrapper\">\n"
+			"    <div id=\"wrap\" class=\"%s\">\n"
 	    	"        %s"
-            "        <main %s>\n",
+            "        <main>\n",
 	    // clang-format on
 	    site_head, entry->title, reset_sheet_hash, style_sheet_hash, script_hash,
-	    site_header ? site_header : "", is_post ? "id=\"index\"" : "");
+	    is_post ? "post" : "", site_header ? site_header : "");
 
 	// write content
 	char* html_content = NULL;
@@ -311,12 +311,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path, 
 		    "    </article>\n",
 		    html_content);
 	} else {
-		fprintf_ret = fprintf(
-		    dest_file,
-		    "<section id=index>\n"
-		    "    %s\n"
-		    "</section>\n",
-		    html_content);
+		fprintf_ret = fprintf(dest_file, "%s\n", html_content);
 	}
 
 	// close html
@@ -324,12 +319,12 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path, 
 	    dest_file,
 	    // clang-format off
             "        </main>\n"
-            "        %s\n"
+            "        %s"
             "    </div>\n"
             "</body>\n"
             "</html>\n",
 	    // clang-format on
-	    site_footer);
+	    site_footer ? site_footer : "");
 
 	if (fprintf_ret < 0) {
 		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);

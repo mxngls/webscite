@@ -1,75 +1,75 @@
-#wrapper {
-	display: flex;
-	flex-direction: column;
-	box-sizing: border-box;
+#wrap {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
 
-	margin: 1.2rem 0.6rem;
-	max-width: 700px;
-	min-height: calc(100vh - 2 * (1.2rem));
+    margin: 1.2rem 0.6rem;
+    max-width: 700px;
+    min-height: calc(100vh - 2 * (1.2rem));
 }
 
 main {
-	margin: 1rem 0;
-	flex: 1;
+    margin: 0;
+    flex: 1;
 }
 
 pre {
-	overflow-x: auto;
-	margin: 1em 0;
+    overflow-x: auto;
+    margin: 1em 0;
 }
 
 footer ul {
-	list-style: none;
-	margin: 0;
-	padding: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
 
-	display: flex;
-	gap: 0.75em;
+    display: flex;
+    gap: 0.75em;
 }
 
 /* Posts */
 #date-updated {
-	display: none;
+    display: none;
 }
 
 /* Table of Contents */
 #toc ol {
-	counter-reset: toc;
-	list-style: none;
-	padding-left: 0;
+    counter-reset: toc;
+    list-style: none;
+    padding-left: 0;
 }
 
 #toc ol ol {
-	padding-left: 1.5em;
+    padding-left: 1.5em;
 }
 
 #toc li {
-	counter-increment: toc;
+    counter-increment: toc;
 }
 
 #toc li::before {
-	content: counters(toc, ".") ". ";
+    content: counters(toc, ".") ". ";
 }
 
 /* Footnotes */
 #footnotes::before {
-	content: "***";
-	display: block;
-	text-align: center;
-	margin-block: 2rem;
+    content: "***";
+    display: block;
+    text-align: center;
+    margin-block: 2rem;
 }
 
 #footnotes {
-	margin-bottom: 2rem;
+    margin-bottom: 2rem;
 }
 
 #footnotes ol {
-	margin: 0;
-	padding: 0;
-	padding-left: 1.2rem;
+    margin: 0;
+    padding: 0;
+    padding-left: 1.2rem;
 }
 
 .footnote-backlink,
 .footnote-reference {
-	margin-left: 0.2rem;
+    margin-left: 0.2rem;
 }
