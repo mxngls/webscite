@@ -179,10 +179,9 @@ static char* __html_create_content(
 			char created_date[256];
 			char created_formatted_date[256];
 			if (entry->meta.created) {
-				ghist_format_ts("%b %m, %Y", created_date, entry->meta.created);
-				snprintf(
-				    created_formatted_date, sizeof(created_formatted_date), "%s",
-				    created_date);
+				ghist_format_ts("%Y-%m-%d", created_date, entry->meta.created);
+				ghist_format_ts(
+				    "%b %m, %Y", created_formatted_date, entry->meta.modified);
 			} else {
 				snprintf(
 				    created_formatted_date, sizeof(created_formatted_date), "%s",
@@ -194,23 +193,23 @@ static char* __html_create_content(
 			if (has_modified) {
 				char modified_date[256];
 				char modified_formatted_date[256];
-				ghist_format_ts("%b %m, %Y", modified_date, entry->meta.modified);
-				snprintf(
-				    modified_formatted_date, sizeof(modified_formatted_date), "%s",
-				    modified_date);
+				ghist_format_ts("%Y-%m-%d", modified_date, entry->meta.modified);
+				ghist_format_ts(
+				    "%b %m, %Y", modified_formatted_date, entry->meta.modified);
 				offset = snprintf(
 				    pos, buf_size - (pos - buf),
 				    // clang-format off
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
-                                          "%s\n"
+                                          "<time datetime=\"%s\">%s</time>\n"
                                       "</div>\n"
                                       "<div id=\"date-updated\">\n"
-                                          "%s\n"
+                                          "<time datetime=\"%s\">%s</time>\n"
                                       "</div>\n"
                                   "</div>\n",
 				    // clang-format on
-				    created_formatted_date, modified_formatted_date);
+				    created_date, created_formatted_date, modified_date,
+				    modified_formatted_date);
 				pos += offset;
 			} else {
 				offset = snprintf(
