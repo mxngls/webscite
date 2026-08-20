@@ -1,4 +1,5 @@
 title: Getting started
+include_footer: yes
 
 <site-toc></site-toc>
 
@@ -35,9 +36,9 @@ title: Getting started
 
 <p>
 	Each <code>.htm</code> file starts with a couple of newline delimited header
-	lines. The <code>title</code> field is <strong>required</strong>. After the
-	headers and a blank line, the rest of the file is plain HTML that forms the
-	body of your post.
+	lines. The <code>title</code> field is <strong>required</strong>; the
+	remaining fields are described further below. After the headers and a blank
+	line, the rest of the file is plain HTML that forms the body of your post.
 </p>
 
 <p> To build your site, run: </p>
@@ -83,6 +84,88 @@ title: Getting started
 	>
 </ul>
 
+<p>
+	Unlike <code>head.htm</code>, the header and footer are not included
+	everywhere. Which pages get them is decided per page through the fields
+	described next.
+</p>
+
+<h2>Page headers</h2>
+
+<p>
+	Apart from <code>title</code>, the header accepts five boolean fields. Each
+	takes <code>yes</code>/<code>y</code> or <code>no</code>/<code>n</code>,
+	case-insensitive. An unknown key or an unrecognized value aborts the build.
+</p>
+
+<table>
+	<thead>
+		<tr>
+			<th>Field</th>
+			<th>Default</th>
+			<th>Effect</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>is_post</code></td>
+			<td><code>yes</code></td>
+			<td
+				>Wrap the content in an <code>&lt;article&gt;</code> tag and list
+				the page in the Atom feed.</td
+			>
+		</tr>
+		<tr>
+			<td><code>include_title</code></td>
+			<td><code>yes</code></td>
+			<td
+				>Render the title as an <code>&lt;h1&gt;</code> above the
+				content.</td
+			>
+		</tr>
+		<tr>
+			<td><code>include_date</code></td>
+			<td><code>yes</code></td>
+			<td
+				>Render the creation date, followed by the modification date if
+				the file has been changed since.</td
+			>
+		</tr>
+		<tr>
+			<td><code>include_header</code></td>
+			<td><code>no</code></td>
+			<td>Include <code>blocks/header.htm</code>.</td>
+		</tr>
+		<tr>
+			<td><code>include_footer</code></td>
+			<td><code>no</code></td>
+			<td>Include <code>blocks/footer.htm</code>.</td>
+		</tr>
+	</tbody>
+</table>
+
+<p>
+	<strong>Every page is a post by default</strong>, so a file that declares nothing but a title
+	gets an <code>&lt;h1&gt;</code>, a date and a feed entry, and no site header
+	or footer. Writing <code>is_post: no</code> flips all four
+	<code>include_</code> defaults at once: title and date off, header and footer
+	on:
+</p>
+
+<pre><code>  title: Home
+  is_post: no
+
+  &lt;p&gt;Hello from webscite.&lt;/p&gt;
+</code></pre>
+
+<p>
+	The fields are applied in the order they appear, so an
+	<code>include_</code> line only sticks if it comes after
+	<code>is_post</code>. The posts here follow their title with
+	<code>include_footer: yes</code> to keep the site-wide navigation without
+	pulling in a second <code>&lt;h1&gt;</code> from the header block.
+</p>
+
 <h2>Configuration</h2>
 
 <p>
@@ -106,9 +189,8 @@ title: Getting started
 
 <p>
 	Webscite generates an Atom feed at <code>/feed.atom</code> automatically. It
-	includes every page that gets generated, which means standalone pages like
-	the index and an about page end up in there next to your posts
-	(<a href="/posts/todos.html">a todo</a>). Feed metadata like title,
+	includes every page that is a post, which is every page that does not carry
+	an <code>is_post: no</code> header. Feed metadata like title,
 	author, and domain are configured through the Makefile. The feed also
 	requires a unique UUID that stays the same even if your domain changes.
 	Webscite combines it with your host and a site creation date into a
