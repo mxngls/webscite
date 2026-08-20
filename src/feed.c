@@ -55,7 +55,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		page_entry entry = *entry_arr->elems[i];
 
 		// pages that opted out of being a post stay out of the feed
-		if (entry.kind != PAGE_KIND_POST) {
+		if (!entry.is_post) {
 			continue;
 		}
 

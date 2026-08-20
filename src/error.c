@@ -24,6 +24,8 @@ const char* get_error_format(site_error_t error)
 	case SITE_ERROR_FTS_INIT:		return "Failed to initialize file tree walk";
 	
 	case SITE_ERROR_MISSING_HEADERS:	return "Title header missing: %s";
+    case SITE_ERROR_WRONG_HEADER_KEY:   return "Wrong header key in %s\nKey: \"%s\"";
+    case SITE_ERROR_WRONG_HEADER_VAL:   return "Wrong header value in %s\nValue: %s\nAllowed are: \"yes\"/\"y\" or \"no\"/\"n\"";
 	case SITE_ERROR_EMPTY_CONTENT:		return "Page has no content. Aborting.";
 	case SITE_ERROR_NO_PAGES_FOUND:		return "No pages to convert. Aborting";
 	

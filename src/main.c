@@ -33,7 +33,7 @@ static char* __extract_ext_prefix(char*);
 static char* __extract_dir(char*, bool);
 
 // main routine and associated function(s)
-static page_entry* __process_page_file(page_info*, char*, bool);
+static page_entry* __process_page_file(page_info*, char*);
 static void page_entry_free(page_entry** e);
 
 static int __copy_file(char* from, char* to)
@@ -252,7 +252,7 @@ static FTS* __init_fts(char* source)
 	return ftsp;
 }
 
-static page_entry* __process_page_file(page_info* page_file, char* curr_dir, bool is_post)
+static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 {
 	page_entry* entry_res = NULL;
 	page_entry* entry = NULL;
@@ -286,6 +286,15 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir, boo
 		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
 		goto error;
 	}
+	strncpy(entry->meta.source_path, source_path, _SITE_PATH_MAX - 1);
+
+	// everything's a post by default
+	entry->is_post = true;
+	entry->includes.header = false;
+	entry->includes.footer = false;
+	entry->includes.title = true;
+	entry->includes.date = true;
+
 	// populate page metadata
 	char page_href[100];
 	if (curr_dir[0] == '\0') {
@@ -303,10 +312,10 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir, boo
 			goto error;
 		}
 	}
+
 	// parse page header
 	int entry_len = -1;
 	if ((entry_len = page_parse_header(source_file, entry)) == -1) {
-		ERRORF(SITE_ERROR_MISSING_HEADERS, source_path);
 		goto error;
 	};
 
@@ -322,13 +331,8 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir, boo
 		goto error;
 	};
 
-	// account for post overrides
-	if (entry->kind != PAGE_KIND_POST) {
-		is_post = false;
-	}
-
 	// create whole Html file for page
-	if (html_create_page(entry, content, page_path, is_post) != 0) {
+	if (html_create_page(entry, content, page_path) != 0) {
 		goto error;
 	};
 
@@ -404,12 +408,6 @@ int main(void)
 	char curr_dir[PATH_MAX] = "\0";
 	int curr_fts_level = 0;
 
-	// Blog entry with owned string storage
-	char index_name[256] = "\0";
-	char index_path[PATH_MAX] = "\0";
-	page_info index = { .name = index_name, .path = index_path, .size = 0 };
-	bool is_index = false;
-
 	while ((ftsentp = fts_read(ftsp)) != NULL) {
 		if (curr_fts_level != ftsentp->fts_level) {
 			// update current directory
@@ -482,32 +480,18 @@ int main(void)
 				continue;
 			}
 
-			// ignore custom blog entry point
-			if (strcmp(ftsentp->fts_name, _SITE_EXT_BLOG_INDEX) == 0) {
-				strncpy(index_name, ftsentp->fts_name, 255);
-				strncpy(index_path, ftsentp->fts_path, PATH_MAX - 1);
-
-				index.size = ftsentp->fts_statp->st_size;
-				is_index = true;
-			}
-
 			if (entry_arr.len >= _SITE_PAGES_MAX) {
 				ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
 				res = -1;
 				goto cleanup;
 			}
 
-			if ((entry_res = __process_page_file(&page_file, curr_dir, !is_index))
-			    == NULL) {
+			if ((entry_res = __process_page_file(&page_file, curr_dir)) == NULL) {
 				res = -1;
 				goto cleanup;
 			} else {
 				entry_arr.elems[entry_arr.len] = entry_res;
 				entry_arr.len++;
-			}
-
-			if (is_index) {
-				is_index = false;
 			}
 		}
 	}

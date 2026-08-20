@@ -14,10 +14,6 @@
 #define _SITE_EXT_TARGET_DIR "docs"
 #endif
 
-#ifndef _SITE_EXT_BLOG_INDEX
-#define _SITE_EXT_BLOG_INDEX "index.htm"
-#endif
-
 #ifndef _SITE_EXT_GIT_DIR
 #define _SITE_EXT_GIT_DIR ".git"
 #endif

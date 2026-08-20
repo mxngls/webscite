@@ -8,18 +8,19 @@
 #define _SITE_PAGES_MAX 50
 #define _SITE_PATH_MAX	100
 
-typedef enum {
-	PAGE_KIND_POST, // default
-	PAGE_KIND_INDEX,
-	PAGE_KIND_NONE,
-} page_kind;
-
 typedef struct {
-	page_kind kind;
 	char* title;
 	char* content;
+	bool is_post;
+	struct {
+		bool header;
+		bool footer;
+		bool title;
+		bool date;
+	} includes;
 	struct {
 		char path[_SITE_PATH_MAX];
+		char source_path[_SITE_PATH_MAX];
 		char hash[8]; // NOTE: currently unused
 		int64_t created;
 		int64_t modified;

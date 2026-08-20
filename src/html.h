@@ -19,7 +19,7 @@ int html_init_templates(void);
 void html_cleanup_templates(void);
 
 // create html files
-int html_create_page(page_entry*, char*, char*, bool);
+int html_create_page(page_entry*, char*, char*);
 char* html_escape_content(char*);
 
 #endif // HTML_H

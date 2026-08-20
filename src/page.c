@@ -7,8 +7,72 @@
 #include "error.h"
 #include "page.h"
 
+#include <stddef.h>
+
+static const struct {
+	const char* key;
+	size_t offset; /* offset of a bool inside page_entry */
+} includes[] = {
+	{ "include_header", offsetof(page_entry, includes.header) },
+	{ "include_footer", offsetof(page_entry, includes.footer) },
+	{ "include_title",  offsetof(page_entry, includes.title)	},
+	{ "include_date",	  offsetof(page_entry, includes.date)   },
+};
+
+static int parse_header_val(page_entry* entry, const char* key, char* value)
+{
+	bool* field = NULL;
+	bool val = false;
+
+	for (char* p = value; *p; p++)
+		*p = (char)tolower((unsigned char)*p);
+
+	if (strcmp(key, "is_post") == 0) {
+		if (strcmp(value, "n") == 0 || strcmp(value, "no") == 0) {
+			entry->is_post = false;
+			entry->includes.title = false;
+			entry->includes.date = false;
+			entry->includes.header = true;
+			entry->includes.footer = true;
+			return 0;
+		}
+		if (strcmp(value, "y") == 0 || strcmp(value, "yes") == 0) {
+			return 0;
+		}
+		ERRORF(SITE_ERROR_WRONG_HEADER_VAL, entry->meta.source_path, value);
+		return -1;
+	}
+
+	for (size_t i = 0; i < sizeof includes / sizeof *includes; i++) {
+		if (strcmp(key, includes[i].key) == 0) {
+			field = (bool*)((char*)entry + includes[i].offset);
+			break;
+		}
+	}
+
+	if (!field) {
+		ERRORF(SITE_ERROR_WRONG_HEADER_KEY, entry->meta.source_path, key)
+		return -1;
+	}
+
+	if (strcmp(value, "n") == 0 || strcmp(value, "no") == 0)
+		val = false;
+	else if (strcmp(value, "y") == 0 || strcmp(value, "yes") == 0) {
+		val = true;
+	} else {
+		ERRORF(SITE_ERROR_WRONG_HEADER_VAL, entry->meta.source_path, value);
+		return -1;
+	}
+
+	if (field) {
+		*field = val;
+	}
+	return 0;
+}
+
 int page_parse_header(FILE* file, page_entry* entry)
 {
+	int ret = 0;
 	char* line = NULL;
 	size_t len = 0;
 	ssize_t read = 0;
@@ -50,22 +114,28 @@ int page_parse_header(FILE* file, page_entry* entry)
 
 		if (strncmp(key, "title", read) == 0) {
 			entry->title = strdup(value);
-		}
-
-		// manual post override
-		if (strncmp(key, "is_post", read) == 0 && (strncmp(value, "no", 2) == 0)) {
-			entry->kind = PAGE_KIND_NONE;
+		} // manual post override
+		else if (parse_header_val(entry, key, value)) {
+			goto error;
 		}
 	}
-
-	free(line);
 
 	// every page needs a title, posts and non-posts alike
 	if (!entry->title) {
-		return -1;
+		ERRORF(SITE_ERROR_MISSING_HEADERS, entry->meta.source_path);
+		goto error;
 	}
 
-	return (int)readt;
+	ret = (int)readt;
+	goto cleanup;
+
+error:
+	ret = -1;
+
+cleanup:
+	free(line);
+
+	return ret;
 }
 
 int page_parse_content(FILE* source_file, char* source_path, size_t content_size, char* content)
