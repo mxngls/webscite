@@ -1,10 +1,12 @@
+#include <dirent.h>
 #include <errno.h>
-#include <fts.h>
-#include <ftw.h>
 #include <libgen.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "error.h"
 #include "feed.h"
@@ -24,17 +26,20 @@ typedef struct {
 	off_t size;
 } page_info;
 
-// utils
-static int __copy_file(char*, char*);
-static FTS* __init_fts(char*);
-static int __create_dir(char*);
-static int __validate_ext_dirs(char*, char*);
-static char* __extract_ext_prefix(char*);
-static char* __extract_dir(char*, bool);
-
 // main routine and associated function(s)
 static page_entry* __process_page_file(page_info*, char*);
 static void page_entry_free(page_entry** e);
+
+static void __join_path(char* dst, size_t size, char* parent, char* child)
+{
+	if (parent[0] == '\0') {
+		snprintf(dst, size, "%s", child);
+	} else if (child[0] == '\0') {
+		snprintf(dst, size, "%s", parent);
+	} else {
+		snprintf(dst, size, "%s/%s", parent, child);
+	}
+}
 
 static int __copy_file(char* from, char* to)
 {
@@ -66,7 +71,7 @@ static int __copy_file(char* from, char* to)
 	}
 
 	if (len < 0 && !feof(from_file) && ferror(from_file)) {
-		ERRORF(SITE_ERROR_UNEXPECTED_EOF, from);
+		ERRORF(SITE_ERROR_FILE_READ, from);
 		res = -1;
 	}
 
@@ -86,12 +91,10 @@ static void page_entry_free(page_entry** e)
 
 	// free individual fields first
 	free((char*)(*e)->title);
-
 	free((*e)->content);
 
-	e = NULL;
-
-	free(e);
+	free(*e);
+	*e = NULL;
 }
 
 static int __create_dir(char* dir_name)
@@ -123,12 +126,12 @@ static int __validate_ext_dirs(char* git_path, char* source_path)
 		goto cleanup;
 	}
 
-	if ((git_path_copy = malloc(_SITE_PATH_MAX - 1)) == NULL) {
+	if ((git_path_copy = malloc(PATH_MAX - 1)) == NULL) {
 		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
 		res = -1;
 		goto cleanup;
 	};
-	strncpy(git_path_copy, git_absolute_path, _SITE_PATH_MAX - 1);
+	strncpy(git_path_copy, git_absolute_path, PATH_MAX - 1);
 
 	// compare overlapping part of paths
 	char* git_root = dirname(git_path_copy);
@@ -197,59 +200,114 @@ static char* __extract_ext_prefix(char* ext_path)
 	return prefix;
 }
 
-static char* __extract_dir(char* path, bool is_dir)
+static int __process_dir(char* sub_dir, page_entry_arr* entry_arr)
 {
-	char* dir = NULL;
-	char* parent_dir;
-	char* source_dir;
+	int res = 0;
 
-	char* path_copy = strdup(path);
+	DIR* dirp = NULL;
+	struct dirent* dir_ent = NULL;
 
-	if (is_dir) {
-		source_dir = strstr(path_copy, _SITE_EXT_SOURCE_DIR);
-	} else {
-		parent_dir = dirname(path_copy);
-		source_dir = strstr(parent_dir, _SITE_EXT_SOURCE_DIR);
+	// filesystem path for this directory, relative to the repository root;
+	char src_dir[PATH_MAX];
+	__join_path(src_dir, sizeof(src_dir), _SITE_EXT_SOURCE_DIR, sub_dir);
+
+	if ((dirp = opendir(src_dir)) == NULL) {
+		fprintf(stderr, "Failed to open directory: %s\n", src_dir);
+		goto error;
 	}
 
-	if (!source_dir) {
-		free(path_copy);
-		dir = strdup("");
-		return dir;
+	while ((dir_ent = readdir(dirp)) != NULL) {
+
+		char src_file[PATH_MAX] = "";
+
+		// ignore current dir
+		if (strncmp(".", dir_ent->d_name, 1) == 0) {
+			continue;
+		}
+
+		__join_path(src_file, sizeof(src_file), src_dir, dir_ent->d_name);
+
+		struct stat statbuf;
+		if (lstat(src_file, &statbuf) == -1) {
+			fprintf(stderr, "Failed to stat '%s' - %s\n", src_file, strerror(errno));
+			goto error;
+		}
+
+		if (S_ISDIR(statbuf.st_mode)) {
+			if (strcmp(dir_ent->d_name, "blocks") == 0
+			    || strcmp(dir_ent->d_name, "drafts") == 0) {
+				continue;
+			}
+
+			char child_sub_dir[PATH_MAX];
+			__join_path(child_sub_dir, sizeof(child_sub_dir), sub_dir, dir_ent->d_name);
+
+			// create target directory if it doesn't exist yet
+			char out_dir[PATH_MAX];
+			__join_path(out_dir, sizeof(out_dir), _SITE_EXT_TARGET_DIR, child_sub_dir);
+			if (__create_dir(out_dir) != 0) {
+				goto error;
+			}
+
+			if (__process_dir(child_sub_dir, entry_arr) == -1) {
+				goto error;
+			}
+
+			continue;
+		}
+
+		if (!S_ISREG(statbuf.st_mode)) {
+			continue;
+		}
+
+		char* dot = strrchr(dir_ent->d_name, '.');
+		if (!dot) {
+			continue;
+		}
+
+		if (strcmp(dot + 1, "htm") != 0) {
+			// non-posts
+			char out_dir[PATH_MAX];
+			char out_file[PATH_MAX];
+			__join_path(out_dir, sizeof(out_dir), _SITE_EXT_TARGET_DIR, sub_dir);
+			__join_path(out_file, sizeof(out_file), out_dir, dir_ent->d_name);
+
+			if (__copy_file(src_file, out_file)) {
+				goto error;
+			}
+		} else { // posts
+			page_info page_file = {
+				.name = dir_ent->d_name,
+				.path = src_file,
+				.size = statbuf.st_size,
+			};
+			page_entry* entry_res;
+
+			if (entry_arr->len >= _SITE_PAGES_MAX) {
+				ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
+				goto error;
+			}
+
+			if ((entry_res = __process_page_file(&page_file, sub_dir)) == NULL) {
+				goto error;
+			} else {
+				entry_arr->elems[entry_arr->len] = entry_res;
+				entry_arr->len++;
+			}
+		}
 	}
 
-	char* curr_dir = source_dir + strlen(_SITE_EXT_SOURCE_DIR);
+	goto cleanup;
 
-	// skip leading slash
-	if (curr_dir[0] == '/') {
-		curr_dir++;
+error:
+	res = -1;
+
+cleanup:
+	if (dirp) {
+		closedir(dirp);
 	}
 
-	dir = strdup(curr_dir);
-
-	free(path_copy);
-
-	return dir;
-}
-
-static FTS* __init_fts(char* source)
-{
-	FTS* ftsp = NULL;
-	char* paths[] = { (char*)source, NULL };
-	int _fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
-
-	if ((ftsp = fts_open(paths, _fts_options, NULL)) == NULL) {
-		ERROR(SITE_ERROR_FTS_INIT);
-		return NULL;
-	}
-
-	if (fts_children(ftsp, 0) == NULL) {
-		printf("No pages to convert. Aborting\n");
-		fts_close(ftsp);
-		return NULL;
-	}
-
-	return ftsp;
+	return res;
 }
 
 static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
@@ -272,7 +330,7 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 	strlcat(page_name, "l", sizeof(page_name));
 
 	// output path
-	char page_path[_SITE_PATH_MAX];
+	char page_path[PATH_MAX];
 	if (curr_dir[0] == '\0') {
 		snprintf(page_path, sizeof(page_path), "%s/%s", _SITE_EXT_TARGET_DIR, page_name);
 	} else {
@@ -286,7 +344,7 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
 		goto error;
 	}
-	strncpy(entry->meta.source_path, source_path, _SITE_PATH_MAX - 1);
+	strncpy(entry->meta.source_path, source_path, PATH_MAX - 1);
 
 	// everything's a post by default
 	entry->is_post = true;
@@ -302,7 +360,7 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 	} else {
 		snprintf(page_href, sizeof(page_href), "%s/%s", curr_dir, page_name);
 	}
-	strncpy(entry->meta.path, page_href, _SITE_PATH_MAX - 1);
+	strncpy(entry->meta.path, page_href, PATH_MAX - 1);
 	if ((tracked = ghist_find_by_path(source_path))) {
 		entry->meta.created = tracked->creat_time;
 		entry->meta.modified = tracked->mod_time;
@@ -320,7 +378,11 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 	};
 
 	// parse page content
-	size_t content_size = page_file->size - entry_len;
+	if (entry_len < 0 || (off_t)entry_len > page_file->size) {
+		ERROR(SITE_ERROR_EMPTY_CONTENT);
+		goto error;
+	}
+	size_t content_size = (size_t)(page_file->size - entry_len);
 	content = malloc(content_size + 1);
 	if (content == NULL) {
 		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
@@ -339,26 +401,22 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 	entry_res = entry;
 
 	// transfer ownership; freed in main
-	content = NULL;
 	entry = NULL;
 
 	goto cleanup;
 
 error:
-	if (entry_res)
-		free(entry_res);
 	entry_res = NULL;
 
 cleanup:
-	if (content)
-		free(content);
 	if (entry) {
 		free(entry->title);
 		free(entry->content);
 		free(entry);
 	}
-	if (source_file)
+	if (source_file) {
 		fclose(source_file);
+	}
 
 	return entry_res;
 }
@@ -366,8 +424,7 @@ cleanup:
 int main(void)
 {
 	int res = 0;
-	FTS* ftsp = NULL;
-	FTSENT* ftsentp = NULL;
+
 	char* path_prefix = NULL;
 
 	page_entry_arr entry_arr = {
@@ -376,124 +433,32 @@ int main(void)
 	};
 
 	if (__validate_ext_dirs(_SITE_EXT_GIT_DIR, _SITE_EXT_SOURCE_DIR) != 0) {
-		res = -1;
-		goto cleanup;
+		goto error;
 	}
 
 	if ((path_prefix = __extract_ext_prefix(_SITE_EXT_GIT_DIR)) == NULL) {
-		res = -1;
-		goto cleanup;
+		goto error;
 	}
 
 	if (__create_dir(_SITE_EXT_TARGET_DIR) != 0) {
-		res = -1;
-		goto cleanup;
+		goto error;
 	}
 
 	if (html_init_templates() != 0) {
-		res = -1;
-		goto cleanup;
+		goto error;
 	}
 
 	if (ghist_times(path_prefix)) {
-		res = -1;
-		goto cleanup;
+		goto error;
 	}
 
-	if ((ftsp = __init_fts(_SITE_EXT_SOURCE_DIR)) == NULL) {
-		res = -1;
-		goto cleanup;
+	if (__process_dir("", &entry_arr) == -1) {
+		goto error;
 	}
 
-	char curr_dir[PATH_MAX] = "\0";
-	int curr_fts_level = 0;
-
-	while ((ftsentp = fts_read(ftsp)) != NULL) {
-		if (curr_fts_level != ftsentp->fts_level) {
-			// update current directory
-			char* dir = __extract_dir(ftsentp->fts_path, false);
-			snprintf(curr_dir, PATH_MAX, "%s", dir);
-
-			free(dir);
-			curr_fts_level = (int)ftsentp->fts_level;
-		}
-
-		if (ftsentp->fts_info == FTS_D) {
-			// skip blocks
-			if (ftsentp->fts_level == 1 && strcmp(ftsentp->fts_name, "blocks") == 0) {
-				continue;
-			}
-
-			// obtain directory
-			char* dir = __extract_dir(ftsentp->fts_path, true);
-
-			// create current directory if it doesn't exist yet
-			char target_dir[PATH_MAX];
-			snprintf(target_dir, PATH_MAX, "%s/%s", _SITE_EXT_TARGET_DIR, dir);
-
-			if (__create_dir(target_dir) != 0) {
-				res = -1;
-				goto cleanup;
-			}
-
-			free(dir);
-
-		} else if (ftsentp->fts_info != FTS_F && ftsentp->fts_name[0] == '.') {
-			// we only care for non-hidden files and directories
-			continue;
-		}
-
-		char* dot = strrchr(ftsentp->fts_name, '.');
-		if (!dot)
-			continue;
-
-		bool has_ext_htm = strcmp(dot + 1, "htm") == 0;
-
-		if (!has_ext_htm) { // non-posts
-			char to_path[_SITE_PATH_MAX];
-			if (curr_dir[0] == '\0') {
-				snprintf(
-				    to_path, sizeof(to_path), "%s/%s", _SITE_EXT_TARGET_DIR,
-				    ftsentp->fts_name);
-			} else {
-				snprintf(
-				    to_path, sizeof(to_path), "%s/%s/%s", _SITE_EXT_TARGET_DIR,
-				    curr_dir, ftsentp->fts_name);
-			}
-
-			__copy_file(ftsentp->fts_path, to_path);
-		} else { // posts
-			page_info page_file = {
-				.name = ftsentp->fts_name,
-				.path = ftsentp->fts_path,
-				.size = ftsentp->fts_statp->st_size,
-			};
-			page_entry* entry_res;
-
-			// skip blocks
-			if (strcmp(ftsentp->fts_parent->fts_name, "blocks") == 0) {
-				continue;
-			}
-
-			// skip drafts
-			if (strcmp(ftsentp->fts_parent->fts_name, "drafts") == 0) {
-				continue;
-			}
-
-			if (entry_arr.len >= _SITE_PAGES_MAX) {
-				ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
-				res = -1;
-				goto cleanup;
-			}
-
-			if ((entry_res = __process_page_file(&page_file, curr_dir)) == NULL) {
-				res = -1;
-				goto cleanup;
-			} else {
-				entry_arr.elems[entry_arr.len] = entry_res;
-				entry_arr.len++;
-			}
-		}
+	if (entry_arr.len == 0) {
+		ERROR(SITE_ERROR_NO_PAGES_FOUND);
+		goto error;
 	}
 
 	// Only create feed if there are blog posts
@@ -503,26 +468,27 @@ int main(void)
 					"feed.atom",
 		   &entry_arr)
 		== -1) {
-		res = -1;
-		goto cleanup;
+		goto error;
 	}
+
+	goto cleanup;
+
+error:
+	res = -1;
 
 cleanup:
 	// cleanup
-	if (ftsp)
-		fts_close(ftsp);
 	if (path_prefix)
 		free(path_prefix);
 
 	// entries (entry_arr.elem allocated statically
-	page_entry* e = NULL;
-	for (int i = 0; i < entry_arr.len; i++, e = entry_arr.elems[i]) {
-		page_entry_free(&e);
+	for (int i = 0; i < entry_arr.len; i++) {
+		page_entry_free(&entry_arr.elems[i]);
 	}
 
 	// tracked files (renamed files are to be cleaned
-	for (int i = 0; i < tracked_arr.len; i++) {
-		free(tracked_arr.files[i].file_path);
+	for (int i = 0; i < entry_arr.len; i++) {
+		page_entry_free(&entry_arr.elems[i]);
 	}
 	free(tracked_arr.files);
 

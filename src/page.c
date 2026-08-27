@@ -80,11 +80,11 @@ int page_parse_header(FILE* file, page_entry* entry)
 
 	entry->title = NULL;
 
-	bool in_header = true;
-	while (in_header && (readt += read = getline(&line, &len, file))) {
-		// newline
-		if (read <= 1 || line[0] == '\n') {
-			in_header = false;
+	while ((read = getline(&line, &len, file)) != -1) {
+		readt += read;
+
+		// a blank line terminates the header
+		if (read == 1 || line[0] == '\n') {
 			break;
 		}
 

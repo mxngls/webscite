@@ -1,4 +1,5 @@
 #ifndef ERROR_H
+#define ERROR_H
 
 typedef enum {
 	SITE_SUCCESS = 0,
@@ -20,9 +21,6 @@ typedef enum {
 
 	// directory operations
 	SITE_ERROR_DIRECTORY_CREATE,
-
-	// file system traversal
-	SITE_ERROR_FTS_INIT,
 
 	// content validation
 	SITE_ERROR_MISSING_HEADERS,

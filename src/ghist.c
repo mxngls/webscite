@@ -1,13 +1,12 @@
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <unistd.h>
 
 #include "error.h"
 #include "ghist.h"
 #include "git2/odb.h"
-#include "page.h"
 
 typedef struct {
 	char* old_path;
@@ -104,8 +103,8 @@ static int __get_times_cb(
 			return -1;
 	}
 
-	char file_path[_SITE_PATH_MAX] = { '\0' };
-	char old_file_path[_SITE_PATH_MAX] = { '\0' };
+	char file_path[PATH_MAX] = { '\0' };
+	char old_file_path[PATH_MAX] = { '\0' };
 	snprintf(
 	    file_path, sizeof(file_path), "%s%s", cb_payload->path_prefix, delta->new_file.path);
 	snprintf(
