@@ -11,21 +11,6 @@ include_footer: yes
 	plain HTML. This is intentional.
 </p>
 
-<h2>Platform support</h2>
-
-<p>
-	Webscite currently builds on macOS and FreeBSD. The file traversal code uses
-	<code>fts_open</code> and <code>fts_read</code> from
-	<code>&lt;fts.h&gt;</code>, which is a POSIX/BSD interface not available on
-	Windows. Other POSIX dependencies include <code>realpath</code>,
-	<code>getline</code>, <code>dirname</code>, <code>access</code>, and
-	<code>strlcat</code>. Linux support is possible but untested.<site-footnote
-		><code>strlcat</code> is a BSD extension. It is available on macOS and
-		some Linux distributions but is not part of the C standard
-		library.</site-footnote
-	>
-</p>
-
 <h2>Build requirements</h2>
 
 <p>
