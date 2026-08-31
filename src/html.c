@@ -340,45 +340,46 @@ cleanup:
 // escape html entities
 char* html_escape_content(char* html_content)
 {
-	int content_size = 0;
-	char* html_content_copy = html_content;
-	while (*html_content_copy++) {
-		content_size++;
+	// first calculate exact size needed
+	static const char* const entities[256] = {
+		// clang-format off
+        ['"'] = "&quot;",
+        ['\''] = "&#39;",
+        ['&'] = "&amp;",
+        ['<'] = "&lt;",
+        ['>'] = "&gt",
+		// clang-format on
+	};
+
+	size_t need = 1;
+	for (char* cp = html_content; *cp; cp++) {
+		const char* ent = entities[(unsigned char)*cp];
+		size_t add = ent ? strlen(ent) : 1;
+		if (need > SIZE_MAX - add) {
+			return NULL;
+		}
+		need += add;
 	}
 
-	// conservative estimate of size overhead due to necessary escaping
-	unsigned long escaped_size = (unsigned long)(content_size * 2);
-	char* escaped = malloc(escaped_size);
-	if (escaped == NULL) {
+	char* out = malloc(need);
+	if (!out) {
+		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
 		return NULL;
 	}
-	escaped[0] = '\0';
 
-	char* pos = escaped;
-
-	while (*html_content && escaped_size - (pos - escaped) > 0) {
-		size_t buffer_size = escaped_size - (pos - escaped);
-		switch (*html_content) {
-		case '"':
-			pos += snprintf(pos, buffer_size, "%s", "&quot;");
-			break;
-		case '\'':
-			pos += snprintf(pos, buffer_size, "%s", "&apos;");
-			break;
-		case '&':
-			pos += snprintf(pos, buffer_size, "%s", "&amp;");
-			break;
-		case '<':
-			pos += snprintf(pos, buffer_size, "%s", "&lt;");
-			break;
-		case '>':
-			pos += snprintf(pos, buffer_size, "%s", "&gt;");
-			break;
-		default:
-			pos += snprintf(pos, buffer_size, "%c", *html_content);
+	char* write = out;
+	for (char* p = html_content; *p; p++) {
+		const char* ent = entities[(unsigned char)*p];
+		if (ent) {
+			size_t ent_len = strlen(ent);
+			memcpy(write, ent, ent_len);
+			write += ent_len;
+		} else {
+			*write++ = *p;
 		}
-		html_content++;
 	}
 
-	return escaped;
+	*write = '\0';
+
+	return out;
 }
