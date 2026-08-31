@@ -9,15 +9,15 @@
 #define _SITE_PAGES_MAX 50
 
 typedef struct {
-	char* title;
-	char* content;
-	bool is_post;
 	struct {
-		bool header;
-		bool footer;
-		bool title;
-		bool date;
-	} includes;
+		char* title;
+		char* class;
+		bool is_post;
+		bool include_header;
+		bool include_footer;
+		bool include_title;
+		bool include_date;
+	} headers;
 	struct {
 		char path[PATH_MAX];
 		char source_path[PATH_MAX];
@@ -25,6 +25,7 @@ typedef struct {
 		int64_t created;
 		int64_t modified;
 	} meta;
+	char* content;
 } page_entry;
 
 typedef struct {

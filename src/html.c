@@ -148,8 +148,8 @@ void html_cleanup_templates(void)
 // package content
 static char* __html_create_content(page_entry* entry, char* page_content, char* additional_content)
 {
-	bool include_title = entry->includes.title;
-	bool include_date = entry->includes.date;
+	bool include_title = entry->headers.include_title;
+	bool include_date = entry->headers.include_date;
 
 	size_t buf_size = 48 * 1024;
 	char* buf = NULL;
@@ -165,7 +165,8 @@ static char* __html_create_content(page_entry* entry, char* page_content, char* 
 	pos += offset;
 
 	if (include_title) {
-		offset = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", entry->title);
+		offset
+		    = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", entry->headers.title);
 		pos += offset;
 	}
 
@@ -278,13 +279,14 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 			"    <script src=\"/script.js?=%s\" defer></script>\n"
         	"</head>\n"
         	"<body>\n"
-			"    <div id=\"wrap\" class=\"%s\">\n"
+			"    <div id=\"wrap\" class=\"%s%s%s\">\n"
 	    	"        %s"
             "        <main>\n",
 	    // clang-format on
-	    site_head, entry->title, reset_sheet_hash, style_sheet_hash, script_hash,
-	    entry->is_post ? "post" : "non-post",
-	    entry->includes.header && site_header ? site_header : "");
+	    site_head, entry->headers.title, reset_sheet_hash, style_sheet_hash, script_hash,
+	    entry->headers.is_post ? "post" : "", entry->headers.class ? " " : "",
+	    entry->headers.class ? entry->headers.class : "",
+	    entry->headers.include_header && site_header ? site_header : "");
 
 	// write content
 	char* html_content = NULL;
@@ -296,7 +298,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 		goto error;
 	}
 
-	if (entry->is_post) {
+	if (entry->headers.is_post) {
 		fprintf_ret = fprintf(
 		    dest_file,
 		    "    <article>\n"
@@ -317,7 +319,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
             "</body>\n"
             "</html>\n",
 	    // clang-format on
-	    entry->includes.footer && site_footer ? site_footer : "");
+	    entry->headers.include_footer && site_footer ? site_footer : "");
 
 	if (fprintf_ret < 0) {
 		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);

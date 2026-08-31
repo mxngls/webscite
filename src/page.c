@@ -9,31 +9,80 @@
 
 #include <stddef.h>
 
-static const struct {
-	const char* key;
-	size_t offset; /* offset of a bool inside page_entry */
-} includes[] = {
-	{ "include_header", offsetof(page_entry, includes.header) },
-	{ "include_footer", offsetof(page_entry, includes.footer) },
-	{ "include_title",  offsetof(page_entry, includes.title)	},
-	{ "include_date",	  offsetof(page_entry, includes.date)   },
-};
-
-static int parse_header_val(page_entry* entry, const char* key, char* value)
+static int parse_str_val(char** dst, const char* val)
 {
+	char* dup = strdup(val);
+	if (!dup) {
+		if (errno == ENOMEM) {
+			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+		}
+		return -1;
+	}
+
+	free(*dst);
+	*dst = dup;
+
+	return 0;
+}
+
+static int parse_bool_val(const char* v, bool* out)
+{
+	if (strcasecmp(v, "y") == 0 || strcasecmp(v, "yes") == 0) {
+		*out = true;
+		return 0;
+	}
+	if (strcasecmp(v, "n") == 0 || strcasecmp(v, "no") == 0) {
+		*out = false;
+		return 0;
+	}
+	return -1;
+}
+
+static int header_set(page_entry* entry, const char* key, const char* value)
+{
+	// string headers
+	if (strcmp(key, "title") == 0) {
+		return parse_str_val(&entry->headers.title, value);
+	} else if (strcmp(key, "class") == 0) {
+		return parse_str_val(&entry->headers.class, value);
+	}
+
 	bool* field = NULL;
-	bool val = false;
+	if (strcmp(key, "is_post") == 0) {
+		field = &entry->headers.is_post;
+	} else if (strcmp(key, "include_header") == 0) {
+		field = &entry->headers.include_header;
+	} else if (strcmp(key, "include_footer") == 0) {
+		field = &entry->headers.include_footer;
+	} else if (strcmp(key, "include_title") == 0) {
+		field = &entry->headers.include_title;
+	} else if (strcmp(key, "include_date") == 0) {
+		field = &entry->headers.include_date;
+	} else {
+		ERRORF(SITE_ERROR_WRONG_HEADER_KEY, entry->meta.source_path, field);
+		return -1;
+	}
 
-	for (char* p = value; *p; p++)
-		*p = (char)tolower((unsigned char)*p);
+	// boolean headers
+	if (parse_bool_val(value, field)) {
+		ERRORF(
+		    SITE_ERROR_WRONG_HEADER_VAL, entry->meta.source_path, value,
+		    "Allowed are: \"yes\"/\"y\" or \"no\"/\"n\"");
+		return -1;
+	}
 
+	return 0;
+}
+
+static int parse_header(page_entry* entry, const char* key, char* value)
+{
 	if (strcmp(key, "is_post") == 0) {
 		if (strcmp(value, "n") == 0 || strcmp(value, "no") == 0) {
-			entry->is_post = false;
-			entry->includes.title = false;
-			entry->includes.date = false;
-			entry->includes.header = true;
-			entry->includes.footer = true;
+			entry->headers.is_post = false;
+			entry->headers.include_title = false;
+			entry->headers.include_date = false;
+			entry->headers.include_header = true;
+			entry->headers.include_footer = true;
 			return 0;
 		}
 		if (strcmp(value, "y") == 0 || strcmp(value, "yes") == 0) {
@@ -43,30 +92,10 @@ static int parse_header_val(page_entry* entry, const char* key, char* value)
 		return -1;
 	}
 
-	for (size_t i = 0; i < sizeof includes / sizeof *includes; i++) {
-		if (strcmp(key, includes[i].key) == 0) {
-			field = (bool*)((char*)entry + includes[i].offset);
-			break;
-		}
-	}
-
-	if (!field) {
-		ERRORF(SITE_ERROR_WRONG_HEADER_KEY, entry->meta.source_path, key)
+	if (header_set(entry, key, value)) {
 		return -1;
 	}
 
-	if (strcmp(value, "n") == 0 || strcmp(value, "no") == 0)
-		val = false;
-	else if (strcmp(value, "y") == 0 || strcmp(value, "yes") == 0) {
-		val = true;
-	} else {
-		ERRORF(SITE_ERROR_WRONG_HEADER_VAL, entry->meta.source_path, value);
-		return -1;
-	}
-
-	if (field) {
-		*field = val;
-	}
 	return 0;
 }
 
@@ -78,7 +107,7 @@ int page_parse_header(FILE* file, page_entry* entry)
 	ssize_t read = 0;
 	ssize_t readt = 0;
 
-	entry->title = NULL;
+	entry->headers.title = NULL;
 
 	while ((read = getline(&line, &len, file)) != -1) {
 		readt += read;
@@ -112,16 +141,13 @@ int page_parse_header(FILE* file, page_entry* entry)
 			value = NULL;
 		}
 
-		if (strncmp(key, "title", read) == 0) {
-			entry->title = strdup(value);
-		} // manual post override
-		else if (parse_header_val(entry, key, value)) {
+		if (parse_header(entry, key, value)) {
 			goto error;
 		}
 	}
 
 	// every page needs a title, posts and non-posts alike
-	if (!entry->title) {
+	if (!entry->headers.title) {
 		ERRORF(SITE_ERROR_MISSING_HEADERS, entry->meta.source_path);
 		goto error;
 	}

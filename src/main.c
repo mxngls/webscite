@@ -90,7 +90,7 @@ static void page_entry_free(page_entry** e)
 	}
 
 	// free individual fields first
-	free((char*)(*e)->title);
+	free((char*)(*e)->headers.title);
 	free((*e)->content);
 
 	free(*e);
@@ -347,11 +347,11 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 	strncpy(entry->meta.source_path, source_path, PATH_MAX - 1);
 
 	// everything's a post by default
-	entry->is_post = true;
-	entry->includes.header = false;
-	entry->includes.footer = false;
-	entry->includes.title = true;
-	entry->includes.date = true;
+	entry->headers.is_post = true;
+	entry->headers.include_header = false;
+	entry->headers.include_footer = false;
+	entry->headers.include_title = true;
+	entry->headers.include_date = true;
 
 	// populate page metadata
 	char page_href[100];
@@ -410,7 +410,8 @@ error:
 
 cleanup:
 	if (entry) {
-		free(entry->title);
+		free(entry->headers.title);
+		free(entry->headers.class);
 		free(entry->content);
 		free(entry);
 	}

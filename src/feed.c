@@ -55,7 +55,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		page_entry entry = *entry_arr->elems[i];
 
 		// pages that opted out of being a post stay out of the feed
-		if (!entry.is_post) {
+		if (!entry.headers.is_post) {
 			continue;
 		}
 
@@ -133,7 +133,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		    "        <published>%s</published>\n"
 		    "        <updated>%s</updated>\n"
 		    "    </entry>\n",
-		    entry.title, escaped_content, entry.meta.path, _SITE_EXT_HOST,
+		    entry.headers.title, escaped_content, entry.meta.path, _SITE_EXT_HOST,
 		    _SITE_EXT_TAG_SCHEME_DATE, entry.meta.path, created_formatted,
 		    modified_formatted);
 
