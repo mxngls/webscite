@@ -26,7 +26,7 @@ char reset_sheet_hash[8] = { '\0' };
 char script_hash[8] = { '\0' };
 
 // shared template building blocks
-__attribute__((unused)) static int __html_parse_block(const char* block_path, htm_block* block)
+static int __html_parse_block(const char* block_path, htm_block* block)
 {
 	FILE* block_file = NULL;
 	char* block_content = NULL;
