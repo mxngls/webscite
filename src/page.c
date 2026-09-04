@@ -149,6 +149,9 @@ int page_parse_header(FILE* file, page_entry* entry)
 	// every page needs a title, posts and non-posts alike
 	if (!entry->headers.title) {
 		ERRORF(SITE_ERROR_MISSING_HEADERS, entry->meta.source_path);
+		ERRORF(SITE_ERROR_MISSING_HEADERS, "title", entry->meta.source_path);
+		goto error;
+	}
 		goto error;
 	}
 

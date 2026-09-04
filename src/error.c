@@ -21,7 +21,7 @@ const char* get_error_format(site_error_t error)
 						
 	case SITE_ERROR_DIRECTORY_CREATE:	return "Failed to create directory";
 	
-	case SITE_ERROR_MISSING_HEADERS:	return "Title header missing: %s";
+	case SITE_ERROR_MISSING_HEADERS:	return "\"%s\" header missing: %s";
     case SITE_ERROR_WRONG_HEADER_KEY:   return "Wrong header key in %s\nKey: \"%s\"";
     case SITE_ERROR_WRONG_HEADER_VAL:   return "Wrong header value in %s\nValue: %s\n%s";
 	case SITE_ERROR_EMPTY_CONTENT:		return "Page has no content. Aborting.";
