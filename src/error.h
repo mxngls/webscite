@@ -32,9 +32,6 @@ typedef enum {
 	// Git operations
 	SITE_ERROR_GIT_OPERATION,
 
-	// Bounds error
-	SITE_ERROR_PAGE_NUMBER_EXCEEDED,
-
 	// Provided source directory doesn't lie inside provided Git directory
 	SITE_ERROR_EXT_DIRS_NONMATCHING,
 	SITE_ERROR_EXT_DIRS_INVALID

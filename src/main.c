@@ -280,11 +280,6 @@ static int __process_dir(char* sub_dir, page_entry_arr* entry_arr, tracked_file_
 			};
 			page_entry* entry_res;
 
-			if (entry_arr->len >= _SITE_PAGES_MAX) {
-				ERROR(SITE_ERROR_PAGE_NUMBER_EXCEEDED);
-				goto error;
-			}
-
 			if ((entry_res = __process_page_file(&page_file, sub_dir, tracked_files))
 			    == NULL) {
 				goto error;
