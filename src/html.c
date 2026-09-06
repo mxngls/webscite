@@ -349,7 +349,7 @@ char* html_escape_content(char* html_content)
         ['\''] = "&#39;",
         ['&'] = "&amp;",
         ['<'] = "&lt;",
-        ['>'] = "&gt",
+        ['>'] = "&gt;",
 		// clang-format on
 	};
 
