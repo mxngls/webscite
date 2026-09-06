@@ -4,7 +4,7 @@ SHELL = /bin/sh
 
 CC = clang
 
-SRC_DIR = src/
+SRC_DIR = src
 
 # Site configuration (override these as needed)
 _SITE_EXT_SOURCE_DIR ?= content
