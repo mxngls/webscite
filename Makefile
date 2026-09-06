@@ -36,6 +36,7 @@ CFLAGS = \
 -Wno-sign-conversion \
 -Wdouble-promotion \
 -Werror \
+-Wshadow \
 -Wpedantic \
 -Wpointer-arith \
 -D_SITE_EXT_SOURCE_DIR=\"$(_SITE_EXT_SOURCE_DIR)\" \
