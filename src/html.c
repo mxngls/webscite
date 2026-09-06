@@ -140,7 +140,7 @@ void html_cleanup_templates(void)
 }
 
 // package content
-static char* __html_create_content(page_entry* entry, char* page_content, char* additional_content)
+static char* __html_create_content(page_entry* entry, char* plain_content, char* additional_content)
 {
 	bool include_title = entry->headers.include_title;
 	bool include_date = entry->headers.include_date;
@@ -213,7 +213,7 @@ static char* __html_create_content(page_entry* entry, char* page_content, char* 
 	}
 
 	// add content
-	offset = snprintf(pos, buf_size - (pos - buf), "%s", page_content);
+	offset = snprintf(pos, buf_size - (pos - buf), "%s", plain_content);
 	pos += offset;
 
 	// add additional content if provided
@@ -234,6 +234,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 {
 	int res = 0;
 
+	char* html_content = NULL;
 	char* escaped_title = NULL;
 	char* escaped_description = NULL;
 
@@ -300,7 +301,6 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	    entry->headers.include_header && site_header ? site_header : "");
 
 	// write content
-	char* html_content = NULL;
 	if ((html_content = __html_create_content(
 		 entry, plain_content,
 		 NULL // no additional content yet so we pass NULL
@@ -345,6 +345,7 @@ cleanup:
 		fclose(dest_file);
 	}
 
+	free(html_content);
 	free(escaped_title);
 	free(escaped_description);
 
