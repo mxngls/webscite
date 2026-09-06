@@ -11,12 +11,15 @@
 typedef struct {
 	struct {
 		char* title;
+		char* description;
 		char* class;
+		char* stylesheet;
 		bool is_post;
 		bool include_header;
 		bool include_footer;
 		bool include_title;
 		bool include_date;
+		bool include_styles;
 	} headers;
 	struct {
 		char path[PATH_MAX];

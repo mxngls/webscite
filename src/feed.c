@@ -51,7 +51,6 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 	    _SITE_EXT_FEED_ID);
 
 	for (int i = 0; i < entry_arr->len; i++) {
-		// header_arr and content_arr grow together so no additonal checks necessary here
 		page_entry entry = *entry_arr->elems[i];
 
 		// pages that opted out of being a post stay out of the feed
@@ -72,9 +71,8 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		// replace custom elements with standard HTML for feed readers
 		char* feed_content = strdup(entry_arr->elems[i]->content);
 		if (feed_content == NULL) {
-			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
-			fclose(dest_file);
-			return -1;
+			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path);
+			goto error;
 		}
 		for (int t = 0; t < feed_tag_map_len; t++) {
 			const char* custom = feed_tag_map[t][0];
@@ -113,12 +111,14 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 			}
 		}
 
-		char* escaped_content = html_escape_content(feed_content);
+		char* escaped_content = NULL;
+		if (html_escape_content(feed_content, &escaped_content)) {
+			goto error;
+		};
 		free(feed_content);
 		if (escaped_content == NULL) {
-			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path)
-			fclose(dest_file);
-			return -1;
+			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path);
+			goto error;
 		}
 
 		res = fprintf(
@@ -128,7 +128,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		    "        <content type=\"html\">\n"
 		    "%s"
 		    "        </content>\n"
-		    "        <link href=\"" _SITE_EXT_URL "/%s\"/>\n"
+		    "        <link href=\"" _SITE_EXT_URL "%s\"/>\n"
 		    "        <id>tag:www.%s,%s:%s</id>\n"
 		    "        <published>%s</published>\n"
 		    "        <updated>%s</updated>\n"
@@ -141,6 +141,12 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 	}
 
 	res = fprintf(dest_file, "</feed>\n");
+	goto cleanup;
+
+error:
+	res = -1;
+
+cleanup:
 	fclose(dest_file);
 
 	return res;

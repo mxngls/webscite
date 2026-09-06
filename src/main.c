@@ -83,8 +83,11 @@ static void page_entry_free(page_entry** e)
 		return;
 	}
 
-	// free individual fields first
+	// free individual fields
 	free((char*)(*e)->headers.title);
+	free((char*)(*e)->headers.description);
+	free((char*)(*e)->headers.class);
+	free((char*)(*e)->headers.stylesheet);
 	free((*e)->content);
 
 	free(*e);
@@ -346,6 +349,7 @@ static page_entry* __process_page_file(
 
 	// everything's a post by default
 	entry->headers.is_post = true;
+	entry->headers.include_styles = true;
 	entry->headers.include_header = false;
 	entry->headers.include_footer = false;
 	entry->headers.include_title = true;
@@ -356,7 +360,7 @@ static page_entry* __process_page_file(
 	if (curr_dir[0] == '\0') {
 		snprintf(page_href, sizeof(page_href), "/%s", page_name);
 	} else {
-		snprintf(page_href, sizeof(page_href), "%s/%s", curr_dir, page_name);
+		snprintf(page_href, sizeof(page_href), "/%s/%s", curr_dir, page_name);
 	}
 	strncpy(entry->meta.path, page_href, PATH_MAX - 1);
 	if ((tracked = ghist_find_by_path(source_path, tracked_files))) {
@@ -409,7 +413,9 @@ error:
 cleanup:
 	if (entry) {
 		free(entry->headers.title);
+		free(entry->headers.description);
 		free(entry->headers.class);
+		free(entry->headers.stylesheet);
 		free(entry->content);
 		free(entry);
 	}

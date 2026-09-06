@@ -1,5 +1,6 @@
 title: Getting started
 include_footer: yes
+description: Listing the most important things to get started with Webs(C)ite.
 
 <site-toc></site-toc>
 
@@ -30,15 +31,17 @@ include_footer: yes
 <p>A minimal valid example page looks like this:</p>
 
 <pre><code>  title: My First Post
+  description: A short summary of the post.
 
   &lt;p&gt;Hello from webscite.&lt;/p&gt;
 </code></pre>
 
 <p>
 	Each <code>.htm</code> file starts with a couple of newline delimited header
-	lines. The <code>title</code> field is <strong>required</strong>; the
-	remaining fields are described further below. After the headers and a blank
-	line, the rest of the file is plain HTML that forms the body of your post.
+	lines. The <code>title</code> field is <strong>required</strong>, and every
+	post additionally requires a <code>description</code>; the remaining fields
+	are described further below. After the headers and a blank line, the rest of
+	the file is plain HTML that forms the body of your post.
 </p>
 
 <p> To build your site, run: </p>
@@ -93,8 +96,44 @@ include_footer: yes
 <h2>Page headers</h2>
 
 <p>
-	Apart from <code>title</code>, the header accepts five boolean fields. Each
-	takes <code>yes</code>/<code>y</code> or <code>no</code>/<code>n</code>,
+	Apart from <code>title</code>, the header accepts three more text fields:
+</p>
+
+<table>
+	<thead>
+		<tr>
+			<th>Field</th>
+			<th>Effect</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>description</code></td>
+			<td
+				>Emitted as a <code>&lt;meta name="description"&gt;</code> tag.
+				Required on posts, optional everywhere else.</td
+			>
+		</tr>
+		<tr>
+			<td><code>stylesheet</code></td>
+			<td
+				>Link a further stylesheet by path, in addition to or instead of
+				the default one.</td
+			>
+		</tr>
+		<tr>
+			<td><code>class</code></td>
+			<td
+				>Added to the wrapping <code>&lt;div id="wrap"&gt;</code>
+				alongside <code>post</code>.</td
+			>
+		</tr>
+	</tbody>
+</table>
+
+<p>
+	It also accepts six boolean fields. Each takes
+	<code>yes</code>/<code>y</code> or <code>no</code>/<code>n</code>,
 	case-insensitive. An unknown key or an unrecognized value aborts the build.
 </p>
 
@@ -141,13 +180,19 @@ include_footer: yes
 			<td><code>no</code></td>
 			<td>Include <code>blocks/footer.htm</code>.</td>
 		</tr>
+		<tr>
+			<td><code>include_styles</code></td>
+			<td><code>yes</code></td>
+			<td>Link the default <code>style.css</code>.</td>
+		</tr>
 	</tbody>
 </table>
 
 <p>
-	<strong>Every page is a post by default</strong>, so a file that declares nothing but a title
-	gets an <code>&lt;h1&gt;</code>, a date and a feed entry, and no site header
-	or footer. Writing <code>is_post: no</code> flips all four
+	<strong>Every page is a post by default</strong>, so a file that declares
+	nothing but a title and a description gets an <code>&lt;h1&gt;</code>, a date
+	and a feed entry, and no site header or footer. Writing
+	<code>is_post: no</code> flips all four
 	<code>include_</code> defaults at once: title and date off, header and footer
 	on:
 </p>

@@ -43,8 +43,15 @@ static int header_set(page_entry* entry, const char* key, const char* value)
 	// string headers
 	if (strcmp(key, "title") == 0) {
 		return parse_str_val(&entry->headers.title, value);
+
+	} else if (strcmp(key, "description") == 0) {
+		return parse_str_val(&entry->headers.description, value);
+
 	} else if (strcmp(key, "class") == 0) {
 		return parse_str_val(&entry->headers.class, value);
+
+	} else if (strcmp(key, "stylesheet") == 0) {
+		return parse_str_val(&entry->headers.stylesheet, value);
 	}
 
 	bool* field = NULL;
@@ -58,6 +65,8 @@ static int header_set(page_entry* entry, const char* key, const char* value)
 		field = &entry->headers.include_title;
 	} else if (strcmp(key, "include_date") == 0) {
 		field = &entry->headers.include_date;
+	} else if (strcmp(key, "include_styles") == 0) {
+		field = &entry->headers.include_styles;
 	} else {
 		ERRORF(SITE_ERROR_WRONG_HEADER_KEY, entry->meta.source_path, field);
 		return -1;
@@ -107,8 +116,6 @@ int page_parse_header(FILE* file, page_entry* entry)
 	ssize_t read = 0;
 	ssize_t readt = 0;
 
-	entry->headers.title = NULL;
-
 	while ((read = getline(&line, &len, file)) != -1) {
 		readt += read;
 
@@ -146,9 +153,14 @@ int page_parse_header(FILE* file, page_entry* entry)
 		}
 	}
 
-	// every page needs a title, posts and non-posts alike
+	// every page needs a title and description, posts and non-posts alike
 	if (!entry->headers.title) {
 		ERRORF(SITE_ERROR_MISSING_HEADERS, "title", entry->meta.source_path);
+		goto error;
+	}
+	// while descriptions are post-only
+	if (entry->headers.is_post && !entry->headers.description) {
+		ERRORF(SITE_ERROR_MISSING_HEADERS, "description", entry->meta.source_path);
 		goto error;
 	}
 

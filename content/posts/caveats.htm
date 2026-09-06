@@ -1,5 +1,7 @@
+<!-- prettier-ignore -->
 title: Technical Caveats
 include_footer: yes
+description: Some caveats to be aware of.
 
 <site-toc></site-toc>
 
@@ -24,12 +26,11 @@ include_footer: yes
 
 <p>
 	The <code>content/</code> directory must live inside a Git repository.
-	Creation and modification dates are read from Git history, and static asset
-	cache busting uses Git blob hashes. Abbreviated hashes are appended as query
-	parameters to <code>reset.css</code>, <code>style.css</code>, and
-	<code>script.js</code>&mdash;these three filenames are expected inside the
-	<code>content/</code> directory. Files that have not been committed yet show
-	as "DRAFT" with no date.
+	Creation and modification dates are read from Git history. A single
+	<code>style.css</code> is expected to be present in the content directory as
+	a default style sheet. Using the page <code>include_styles</code> header
+	users can opt out of it for individual pages. Files that have not been
+	committed yet show as "DRAFT" with no date.
 </p>
 <p>
 	Git integration is provided by <a href="https://libgit2.org">libgit2</a>,

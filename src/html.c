@@ -20,11 +20,6 @@ char* site_head = NULL;
 char* site_header = NULL;
 char* site_footer = NULL;
 
-// style sheet and script blob hashes
-char style_sheet_hash[8] = { '\0' };
-char reset_sheet_hash[8] = { '\0' };
-char script_hash[8] = { '\0' };
-
 // shared template building blocks
 static int __html_parse_block(const char* block_path, htm_block* block)
 {
@@ -39,7 +34,6 @@ static int __html_parse_block(const char* block_path, htm_block* block)
 		goto cleanup;
 	}
 
-	// get file size using fseek/ftell
 	if (fseek(block_file, 0, SEEK_END) != 0) {
 		ERRORF(SITE_ERROR_FILE_SEEK, block_path);
 		goto cleanup;
@@ -240,6 +234,9 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 {
 	int res = 0;
 
+	char* escaped_title = NULL;
+	char* escaped_description = NULL;
+
 	// html destination
 	FILE* dest_file = fopen(output_path, "w");
 	if (dest_file == NULL) {
@@ -249,43 +246,57 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 
 	int fprintf_ret = 0;
 
-	// append abbreviated Git blob hashes to circumvent overly aggressive
-	// browser cashing (Safari)
-	if (style_sheet_hash[0] == '\0' || reset_sheet_hash[0] == '\0' || script_hash[0] == '\0') {
-		char style_sheet_path[] = _SITE_EXT_SOURCE_DIR "/style.css";
-		if (ghist_blob_hash(style_sheet_hash, sizeof(style_sheet_hash), style_sheet_path)) {
-			goto error;
-		}
-		char reset_sheet_path[] = _SITE_EXT_SOURCE_DIR "/reset.css";
-		if (ghist_blob_hash(reset_sheet_hash, sizeof(reset_sheet_hash), reset_sheet_path)) {
-			goto error;
-		}
-		char script_path[] = _SITE_EXT_SOURCE_DIR "/script.js";
-		if (ghist_blob_hash(script_hash, sizeof(script_hash), script_path)) {
-			goto error;
-		}
+	if (html_escape_content(entry->headers.title, &escaped_title)) {
+		goto error;
 	}
+	if (html_escape_content(entry->headers.description, &escaped_description)) {
+		goto error;
+	};
+
+	// page title (and possibly it's description)
+	fprintf_ret = fprintf(
+	    dest_file,
+	    "<!DOCTYPE html>"
+	    "<html lang=\"en\">\n"
+	    "<head>\n"
+	    "    <title>%s</title>\n"
+	    "    %s%s%s",
+	    escaped_title,
+
+	    escaped_description ? "<meta name=\"description\" content=\"" : "",
+	    escaped_description ? escaped_description : "", escaped_description ? "\">\n" : "");
 
 	fprintf_ret = fprintf(
 	    dest_file,
-	    // clang-format off
-            "<!DOCTYPE html>"
-            "<html lang=\"en\">\n"
-            "<head>\n"
-            "%s"
-            "    <title>%s</title>\n"
-			"    <link rel=\"stylesheet\" href=\"/reset.css?=%s\" type=\"text/css\">\n"
-	    	"    <link rel=\"stylesheet\" href=\"/style.css?=%s\" type=\"text/css\">\n"
-			"    <script src=\"/script.js?=%s\" defer></script>\n"
-        	"</head>\n"
-        	"<body>\n"
-			"    <div id=\"wrap\" class=\"%s%s%s\">\n"
-	    	"        %s"
-            "        <main>\n",
-	    // clang-format on
-	    site_head, entry->headers.title, reset_sheet_hash, style_sheet_hash, script_hash,
-	    entry->headers.is_post ? "post" : "", entry->headers.class ? " " : "",
-	    entry->headers.class ? entry->headers.class : "",
+
+	    "    <link href=\"/feed.atom\" type=\"application/atom+xml\" rel=\"alternate\" />"
+	    "    %s" // default style sheet
+	    "    %s%s%s" // custom style sheet
+	    "    %s" // custom head content
+	    "</head>\n",
+
+	    entry->headers.include_styles
+		? "<link rel=\"stylesheet\" href=\"/style.css\" type=\"text/css\">\n"
+		: "",
+
+	    entry->headers.stylesheet ? "<link rel=\"stylesheet\" href=\"" : "",
+	    entry->headers.stylesheet ? entry->headers.stylesheet : "",
+	    entry->headers.stylesheet ? "\" type=\"text/css\">\n" : "", site_head);
+
+	// wrapper class(es)
+	fprintf_ret = fprintf(
+	    dest_file,
+	    "<body>\n"
+	    "    <div id=\"wrap\" class=\"%s%s%s\">\n",
+	    entry->headers.is_post ? "post" : "",
+
+	    entry->headers.class ? " " : "", entry->headers.class ? entry->headers.class : "");
+
+	// header tag
+	fprintf_ret = fprintf(
+	    dest_file,
+	    "        %s"
+	    "        <main>\n",
 	    entry->headers.include_header && site_header ? site_header : "");
 
 	// write content
@@ -301,9 +312,9 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	if (entry->headers.is_post) {
 		fprintf_ret = fprintf(
 		    dest_file,
-		    "    <article>\n"
-		    "        %s\n"
-		    "    </article>\n",
+		    "           <article>\n"
+		    "               %s\n"
+		    "           </article>\n",
 		    html_content);
 	} else {
 		fprintf_ret = fprintf(dest_file, "%s\n", html_content);
@@ -312,13 +323,11 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	// close html
 	fprintf_ret = fprintf(
 	    dest_file,
-	    // clang-format off
-            "        </main>\n"
-            "        %s"
-            "    </div>\n"
-            "</body>\n"
-            "</html>\n",
-	    // clang-format on
+	    "        </main>\n"
+	    "        %s"
+	    "    </div>\n"
+	    "</body>\n"
+	    "</html>\n",
 	    entry->headers.include_footer && site_footer ? site_footer : "");
 
 	if (fprintf_ret < 0) {
@@ -336,12 +345,20 @@ cleanup:
 		fclose(dest_file);
 	}
 
+	free(escaped_title);
+	free(escaped_description);
+
 	return res;
 }
 
 // escape html entities
-char* html_escape_content(char* html_content)
+int html_escape_content(char* html_content, char** escaped_content)
 {
+	if (html_content == NULL) {
+		*escaped_content = NULL;
+		return 0;
+	}
+
 	// first calculate exact size needed
 	static const char* const entities[256] = {
 		// clang-format off
@@ -358,7 +375,8 @@ char* html_escape_content(char* html_content)
 		const char* ent = entities[(unsigned char)*cp];
 		size_t add = ent ? strlen(ent) : 1;
 		if (need > SIZE_MAX - add) {
-			return NULL;
+			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+			return -1;
 		}
 		need += add;
 	}
@@ -366,7 +384,7 @@ char* html_escape_content(char* html_content)
 	char* out = malloc(need);
 	if (!out) {
 		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-		return NULL;
+		return -1;
 	}
 
 	char* write = out;
@@ -380,8 +398,8 @@ char* html_escape_content(char* html_content)
 			*write++ = *p;
 		}
 	}
-
 	*write = '\0';
+	*escaped_content = out;
 
-	return out;
+	return 0;
 }

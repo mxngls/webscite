@@ -5,9 +5,7 @@
 
 #include "page.h"
 
-#define _SITE_BLOCK_DIR_PATH	     _SITE_EXT_SOURCE_DIR "/blocks"
-#define _SITE_STYLE_SHEET_PATH	     "/style.css"
-#define _SITE_RESET_STYLE_SHEET_PATH "/reset.css"
+#define _SITE_BLOCK_DIR_PATH _SITE_EXT_SOURCE_DIR "/blocks"
 
 typedef struct {
 	long len;
@@ -20,6 +18,6 @@ void html_cleanup_templates(void);
 
 // create html files
 int html_create_page(page_entry*, char*, char*);
-char* html_escape_content(char*);
+int html_escape_content(char*, char**);
 
 #endif // HTML_H
