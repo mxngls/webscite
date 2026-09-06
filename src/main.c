@@ -14,12 +14,6 @@
 #include "html.h"
 #include "page.h"
 
-tracked_file_arr tracked_arr = {
-	.files = NULL,
-	.len = 0,
-	.capacity = 0,
-};
-
 typedef struct {
 	char* name;
 	char* path;
@@ -27,7 +21,7 @@ typedef struct {
 } page_info;
 
 // main routine and associated function(s)
-static page_entry* __process_page_file(page_info*, char*);
+static page_entry* __process_page_file(page_info*, char*, tracked_file_arr*);
 static void page_entry_free(page_entry** e);
 
 static void __join_path(char* dst, size_t size, char* parent, char* child)
@@ -200,7 +194,7 @@ static char* __extract_ext_prefix(char* ext_path)
 	return prefix;
 }
 
-static int __process_dir(char* sub_dir, page_entry_arr* entry_arr)
+static int __process_dir(char* sub_dir, page_entry_arr* entry_arr, tracked_file_arr* tracked_files)
 {
 	int res = 0;
 
@@ -249,7 +243,7 @@ static int __process_dir(char* sub_dir, page_entry_arr* entry_arr)
 				goto error;
 			}
 
-			if (__process_dir(child_sub_dir, entry_arr) == -1) {
+			if (__process_dir(child_sub_dir, entry_arr, tracked_files) == -1) {
 				goto error;
 			}
 
@@ -288,7 +282,8 @@ static int __process_dir(char* sub_dir, page_entry_arr* entry_arr)
 				goto error;
 			}
 
-			if ((entry_res = __process_page_file(&page_file, sub_dir)) == NULL) {
+			if ((entry_res = __process_page_file(&page_file, sub_dir, tracked_files))
+			    == NULL) {
 				goto error;
 			} else {
 				entry_arr->elems[entry_arr->len] = entry_res;
@@ -310,7 +305,10 @@ cleanup:
 	return res;
 }
 
-static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
+static page_entry* __process_page_file(
+    page_info* page_file,
+    char* curr_dir,
+    tracked_file_arr* tracked_files)
 {
 	page_entry* entry_res = NULL;
 	page_entry* entry = NULL;
@@ -361,7 +359,7 @@ static page_entry* __process_page_file(page_info* page_file, char* curr_dir)
 		snprintf(page_href, sizeof(page_href), "%s/%s", curr_dir, page_name);
 	}
 	strncpy(entry->meta.path, page_href, PATH_MAX - 1);
-	if ((tracked = ghist_find_by_path(source_path))) {
+	if ((tracked = ghist_find_by_path(source_path, tracked_files))) {
 		entry->meta.created = tracked->creat_time;
 		entry->meta.modified = tracked->mod_time;
 
@@ -433,6 +431,12 @@ int main(void)
 		.len = 0,
 	};
 
+	tracked_file_arr tracked_files = {
+		.files = NULL,
+		.len = 0,
+		.capacity = 0,
+	};
+
 	if (__validate_ext_dirs(_SITE_EXT_GIT_DIR, _SITE_EXT_SOURCE_DIR) != 0) {
 		goto error;
 	}
@@ -449,11 +453,11 @@ int main(void)
 		goto error;
 	}
 
-	if (ghist_times(path_prefix)) {
+	if (ghist_times(path_prefix, &tracked_files)) {
 		goto error;
 	}
 
-	if (__process_dir("", &entry_arr) == -1) {
+	if (__process_dir("", &entry_arr, &tracked_files) == -1) {
 		goto error;
 	}
 
@@ -482,16 +486,16 @@ cleanup:
 	if (path_prefix)
 		free(path_prefix);
 
-	// entries (entry_arr.elem allocated statically
+	// entries (entry_arr.elem) allocated statically
 	for (int i = 0; i < entry_arr.len; i++) {
 		page_entry_free(&entry_arr.elems[i]);
 	}
 
 	// tracked files (renamed files are to be cleaned
-	for (int i = 0; i < entry_arr.len; i++) {
-		page_entry_free(&entry_arr.elems[i]);
+	for (int i = 0; i < tracked_files.len; i++) {
+		free(tracked_files.files[i].file_path);
 	}
-	free(tracked_arr.files);
+	free(tracked_files.files);
 
 	// cleanup template invocations
 	html_cleanup_templates();

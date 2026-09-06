@@ -15,21 +15,20 @@ typedef struct {
 	int capacity;
 } tracked_file_arr;
 
-extern tracked_file_arr tracked_arr;
-
 typedef struct {
 	git_signature* signature;
 	char* path_prefix;
+	tracked_file_arr* tracked_files;
 } diff_cb_payload;
 
 // obtain modification and creation times
-int ghist_times(char*);
+int ghist_times(char*, tracked_file_arr*);
 void ghist_format_ts(char*, char*, time_t);
 
 // obtain hash of file blob
 int ghist_blob_hash(char*, size_t, char*);
 
 // match tracked files and files residing in the working dir
-tracked_file* ghist_find_by_path(char*);
+tracked_file* ghist_find_by_path(char*, tracked_file_arr*);
 
 #endif // GHIST_H
