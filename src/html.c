@@ -140,7 +140,11 @@ void html_cleanup_templates(void)
 }
 
 // package content
-static char* __html_create_content(page_entry* entry, char* plain_content, char* additional_content)
+static char* __html_create_content(
+    FILE* dest_file,
+    page_entry* entry,
+    char* content,
+    char* additional_content)
 {
 	bool include_title = entry->headers.include_title;
 	bool include_date = entry->headers.include_date;
@@ -152,16 +156,12 @@ static char* __html_create_content(page_entry* entry, char* plain_content, char*
 		return NULL;
 	}
 
-	char* pos = buf;
-	int offset = 0;
+	int fprintf_ret = 0;
 
-	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "");
-	pos += offset;
+	fprintf_ret = fprintf(dest_file, "%s\n", "");
 
 	if (include_title) {
-		offset
-		    = snprintf(pos, buf_size - (pos - buf), "<h1>%s</h1>\n", entry->headers.title);
-		pos += offset;
+		fprintf_ret = fprintf(dest_file, "<h1>%s</h1>\n", entry->headers.title);
 	}
 
 	if (include_date) {
@@ -182,8 +182,8 @@ static char* __html_create_content(page_entry* entry, char* plain_content, char*
 			char modified_formatted_date[256];
 			ghist_format_ts("%Y-%m-%d", modified_date, entry->meta.modified);
 			ghist_format_ts("%b %m, %Y", modified_formatted_date, entry->meta.modified);
-			offset = snprintf(
-			    pos, buf_size - (pos - buf),
+			fprintf_ret = fprintf(
+			    dest_file,
 			    // clang-format off
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
@@ -196,10 +196,9 @@ static char* __html_create_content(page_entry* entry, char* plain_content, char*
 			    // clang-format on
 			    created_date, created_formatted_date, modified_date,
 			    modified_formatted_date);
-			pos += offset;
 		} else {
-			offset = snprintf(
-			    pos, buf_size - (pos - buf),
+			fprintf_ret = fprintf(
+			    dest_file,
 			    // clang-format off
                                   "<div id=\"post-date\">\n"
                                       "<div id=\"date-created\">\n"
@@ -208,23 +207,24 @@ static char* __html_create_content(page_entry* entry, char* plain_content, char*
                                   "</div>\n",
 			    // clang-format on
 			    created_formatted_date);
-			pos += offset;
 		}
 	}
 
 	// add content
-	offset = snprintf(pos, buf_size - (pos - buf), "%s", plain_content);
-	pos += offset;
+	fprintf_ret = fprintf(dest_file, "%s", content);
 
 	// add additional content if provided
 	if (additional_content) {
-		offset = snprintf(pos, buf_size - (pos - buf), "%s", additional_content);
-		pos += offset;
+		fprintf_ret = fprintf(dest_file, "%s", additional_content);
 	}
 
 	// close main content
-	offset = snprintf(pos, buf_size - (pos - buf), "%s\n", "");
-	pos += offset;
+	fprintf_ret = fprintf(dest_file, "%s\n", "");
+
+	if (fprintf_ret < 0) {
+		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
+		return NULL;
+	}
 
 	return buf;
 }
@@ -302,8 +302,8 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 
 	// write content
 	if ((html_content = __html_create_content(
-		 entry, plain_content,
-		 NULL // no additional content yet so we pass NULL
+		 dest_file, entry, plain_content,
+		 NULL // no additional content
 		 ))
 	    == NULL) {
 		goto error;
