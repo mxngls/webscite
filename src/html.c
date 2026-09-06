@@ -270,9 +270,9 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	    dest_file,
 
 	    "    <link href=\"/feed.atom\" type=\"application/atom+xml\" rel=\"alternate\" />"
-	    "    %s" // default style sheet
+	    "    %s"     // default style sheet
 	    "    %s%s%s" // custom style sheet
-	    "    %s" // custom head content
+	    "    %s"     // custom head content
 	    "</head>\n",
 
 	    entry->headers.include_styles

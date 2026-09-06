@@ -6,8 +6,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define _SITE_PAGES_MAX 50
-
 typedef struct {
 	struct {
 		char* title;
@@ -32,8 +30,9 @@ typedef struct {
 } page_entry;
 
 typedef struct {
-	page_entry* elems[_SITE_PAGES_MAX];
+	page_entry* items;
 	int len;
+	int capacity;
 } page_entry_arr;
 
 // work with pages

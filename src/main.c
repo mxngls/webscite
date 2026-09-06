@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "array.h"
 #include "error.h"
 #include "feed.h"
 #include "ghist.h"
@@ -21,8 +22,8 @@ typedef struct {
 } page_info;
 
 // main routine and associated function(s)
-static page_entry* __process_page_file(page_info*, char*, tracked_file_arr*);
-static void page_entry_free(page_entry** e);
+static int __process_page_file(page_info*, page_entry*, char*, tracked_file_arr*);
+static void page_entry_free(page_entry* e);
 
 static void __join_path(char* dst, size_t size, char* parent, char* child)
 {
@@ -76,22 +77,19 @@ static int __copy_file(char* from, char* to)
 	return res;
 }
 
-static void page_entry_free(page_entry** e)
+static void page_entry_free(page_entry* e)
 {
 
-	if (e == NULL || *e == NULL) {
+	if (e == NULL) {
 		return;
 	}
 
 	// free individual fields
-	free((char*)(*e)->headers.title);
-	free((char*)(*e)->headers.description);
-	free((char*)(*e)->headers.class);
-	free((char*)(*e)->headers.stylesheet);
-	free((*e)->content);
-
-	free(*e);
-	*e = NULL;
+	free(e->headers.title);
+	free(e->headers.description);
+	free(e->headers.class);
+	free(e->headers.stylesheet);
+	free(e->content);
 }
 
 static int __create_dir(char* dir_name)
@@ -278,14 +276,15 @@ static int __process_dir(char* sub_dir, page_entry_arr* entry_arr, tracked_file_
 				.path = src_file,
 				.size = statbuf.st_size,
 			};
-			page_entry* entry_res;
-
-			if ((entry_res = __process_page_file(&page_file, sub_dir, tracked_files))
-			    == NULL) {
+			page_entry entry = { 0 };
+			// handle page entries
+			if (__process_page_file(&page_file, &entry, sub_dir, tracked_files)) {
 				goto error;
 			} else {
-				entry_arr->elems[entry_arr->len] = entry_res;
-				entry_arr->len++;
+				ARRAY_PUSH(entry_arr, entry, {
+					ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+					goto error;
+				});
 			}
 		}
 	}
@@ -303,13 +302,13 @@ cleanup:
 	return res;
 }
 
-static page_entry* __process_page_file(
+static int __process_page_file(
     page_info* page_file,
+    page_entry* entry,
     char* curr_dir,
     tracked_file_arr* tracked_files)
 {
-	page_entry* entry_res = NULL;
-	page_entry* entry = NULL;
+	int res = 0;
 	char* content = NULL;
 	char* source_path = page_file->path;
 	FILE* source_file = NULL;
@@ -333,12 +332,6 @@ static page_entry* __process_page_file(
 		snprintf(
 		    page_path, sizeof(page_path), "%s/%s/%s", _SITE_EXT_TARGET_DIR, curr_dir,
 		    page_name);
-	}
-
-	// handle page entries
-	if ((entry = calloc(1, sizeof(page_entry))) == NULL) {
-		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-		goto error;
 	}
 	strncpy(entry->meta.source_path, source_path, PATH_MAX - 1);
 
@@ -395,30 +388,21 @@ static page_entry* __process_page_file(
 		goto error;
 	};
 
-	entry_res = entry;
-
 	// transfer ownership; freed in main
 	entry = NULL;
-
+	res = 0;
 	goto cleanup;
 
 error:
-	entry_res = NULL;
+	res = -1;
+	page_entry_free(entry);
 
 cleanup:
-	if (entry) {
-		free(entry->headers.title);
-		free(entry->headers.description);
-		free(entry->headers.class);
-		free(entry->headers.stylesheet);
-		free(entry->content);
-		free(entry);
-	}
 	if (source_file) {
 		fclose(source_file);
 	}
 
-	return entry_res;
+	return res;
 }
 
 int main(void)
@@ -428,12 +412,13 @@ int main(void)
 	char* path_prefix = NULL;
 
 	page_entry_arr entry_arr = {
-		.elems = { 0 },
+		.items = NULL,
 		.len = 0,
+		.capacity = 0,
 	};
 
 	tracked_file_arr tracked_files = {
-		.files = NULL,
+		.items = NULL,
 		.len = 0,
 		.capacity = 0,
 	};
@@ -473,7 +458,7 @@ int main(void)
 		   _SITE_EXT_TARGET_DIR "/"
 					"feed.atom",
 		   &entry_arr)
-		== -1) {
+	        == -1) {
 		goto error;
 	}
 
@@ -487,16 +472,15 @@ cleanup:
 	if (path_prefix)
 		free(path_prefix);
 
-	// entries (entry_arr.elem) allocated statically
 	for (int i = 0; i < entry_arr.len; i++) {
-		page_entry_free(&entry_arr.elems[i]);
+		page_entry_free(&entry_arr.items[i]);
 	}
+	free(entry_arr.items);
 
-	// tracked files (renamed files are to be cleaned
 	for (int i = 0; i < tracked_files.len; i++) {
-		free(tracked_files.files[i].file_path);
+		free(tracked_files.items[i].file_path);
 	}
-	free(tracked_files.files);
+	free(tracked_files.items);
 
 	// cleanup template invocations
 	html_cleanup_templates();

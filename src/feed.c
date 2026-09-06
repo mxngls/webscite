@@ -30,7 +30,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 	char feed_modified[feed_modified_size];
 	ghist_format_ts(
 	    "%Y-%m-%dT00:00:00Z", feed_modified,
-	    entry_arr->elems[entry_arr->len - 1]->meta.modified);
+	    entry_arr->items[entry_arr->len - 1].meta.modified);
 
 	res = fprintf(
 	    dest_file,
@@ -51,7 +51,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 	    _SITE_EXT_FEED_ID);
 
 	for (int i = 0; i < entry_arr->len; i++) {
-		page_entry entry = *entry_arr->elems[i];
+		page_entry entry = entry_arr->items[i];
 
 		// pages that opted out of being a post stay out of the feed
 		if (!entry.headers.is_post) {
@@ -69,7 +69,7 @@ int create_feed(char* output_path, page_entry_arr* entry_arr)
 		}
 
 		// replace custom elements with standard HTML for feed readers
-		char* feed_content = strdup(entry_arr->elems[i]->content);
+		char* feed_content = strdup(entry_arr->items[i].content);
 		if (feed_content == NULL) {
 			ERRORF(SITE_ERROR_MEMORY_ALLOCATION, entry.meta.path);
 			goto error;

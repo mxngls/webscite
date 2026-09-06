@@ -10,7 +10,7 @@ typedef struct {
 } tracked_file;
 
 typedef struct {
-	tracked_file* files;
+	tracked_file* items;
 	int len;
 	int capacity;
 } tracked_file_arr;

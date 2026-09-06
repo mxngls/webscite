@@ -4,9 +4,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "array.h"
 #include "error.h"
 #include "ghist.h"
-#include "git2/odb.h"
 
 typedef struct {
 	char* old_path;
@@ -15,38 +15,12 @@ typedef struct {
 } rename_record;
 
 typedef struct {
-	rename_record* records;
+	rename_record* items;
 	int len;
 	int capacity;
 } renamed_file_arr;
 
 static renamed_file_arr renamed_files = { 0 };
-
-static int __add_rename(char* old_path, char* new_path, git_time_t timestamp)
-{
-	if (renamed_files.records == NULL) {
-		renamed_files.records = malloc(sizeof(rename_record) * 100);
-		renamed_files.capacity = 100;
-	} else if (renamed_files.capacity == renamed_files.len) {
-		renamed_files.capacity *= 2;
-		rename_record* grown = realloc(
-		    renamed_files.records, renamed_files.capacity * sizeof(rename_record));
-		if (!grown) {
-			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
-			return -1;
-		}
-		renamed_files.records = grown;
-	}
-
-	renamed_files.records[renamed_files.len] = (rename_record) {
-		.old_path = strdup(old_path),
-		.new_path = strdup(new_path),
-		.rename_time = timestamp,
-	};
-	renamed_files.len++;
-
-	return 0;
-}
 
 static int __trace_rename(
     char* final_path,
@@ -60,16 +34,16 @@ static int __trace_rename(
 	// Walk every rename entry; TODO: a hash map would obviously be better here	than the
 	// current O(n^2) based lookup
 	for (int i = renamed_files.len - 1; i >= 0; i--) {
-		if (strcmp(renamed_files.records[i].new_path, current_path) != 0)
+		if (strcmp(renamed_files.items[i].new_path, current_path) != 0)
 			continue;
 
-		*modification_time = *modification_time == 0 ? renamed_files.records[i].rename_time
+		*modification_time = *modification_time == 0 ? renamed_files.items[i].rename_time
 							     : *modification_time;
 
 		// free old path name
 		free(current_path);
 
-		current_path = strdup(renamed_files.records[i].old_path);
+		current_path = strdup(renamed_files.items[i].old_path);
 
 		i = renamed_files.len;
 	}
@@ -101,18 +75,21 @@ static int __get_times_cb(
 	tracked_file_arr* tracked_files = cb_payload->tracked_files;
 
 	// ensure array capacity
-	if (tracked_files->files == NULL) {
-		tracked_files->files = malloc(sizeof(tracked_file) * 100);
+	if (tracked_files->items == NULL) {
+		if (!(tracked_files->items = malloc(sizeof(tracked_file) * 100))) {
+			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+			return -1;
+		};
 		tracked_files->capacity = 100;
 	} else if (tracked_files->capacity == tracked_files->len) {
 		tracked_files->capacity *= 2;
 		tracked_file* grown
-		    = realloc(tracked_files->files, tracked_files->capacity * sizeof(tracked_file));
+		    = realloc(tracked_files->items, tracked_files->capacity * sizeof(tracked_file));
 		if (!grown) {
 			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
 			return -1;
 		}
-		tracked_files->files = grown;
+		tracked_files->items = grown;
 	}
 
 	char file_path[PATH_MAX] = { '\0' };
@@ -128,9 +105,18 @@ static int __get_times_cb(
 
 	// rename detected
 	if (delta->similarity > 50 && strcmp(old_file_path, file_path) != 0) {
-		if (__add_rename(old_file_path, file_path, author_time)) {
-			return -1;
+		rename_record rec = {
+			.old_path = strdup(old_file_path),
+			.new_path = strdup(file_path),
+			.rename_time = author_time,
 		};
+
+		ARRAY_PUSH(&renamed_files, rec, {
+			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+			return -1;
+		});
+
+		return 0;
 
 		if (access(file_path, F_OK) == 0 && !ghist_find_by_path(file_path, tracked_files)) {
 			tracked_file new_file = {
@@ -138,8 +124,10 @@ static int __get_times_cb(
 				.creat_time = author_time,
 				.mod_time = author_time,
 			};
-			tracked_files->files[tracked_files->len] = new_file;
-			tracked_files->len++;
+			ARRAY_PUSH(tracked_files, new_file, {
+				ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+				return -1;
+			});
 		}
 		return 0;
 	}
@@ -156,9 +144,10 @@ static int __get_times_cb(
 		.creat_time = author_time,
 		.mod_time = 0,
 	};
-
-	tracked_files->files[tracked_files->len] = new_file;
-	tracked_files->len++;
+	ARRAY_PUSH(tracked_files, new_file, {
+		ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+		return -1;
+	});
 
 	return 0;
 }
@@ -177,8 +166,8 @@ void ghist_format_ts(char* format_str, char* formatted, time_t timestamp)
 tracked_file* ghist_find_by_path(char* file_path, tracked_file_arr* tracked_files)
 {
 	for (int i = 0; i < tracked_files->len; i++) {
-		if (strcmp(tracked_files->files[i].file_path, file_path) == 0) {
-			return &tracked_files->files[i];
+		if (strcmp(tracked_files->items[i].file_path, file_path) == 0) {
+			return &tracked_files->items[i];
 		}
 	}
 	return NULL;
@@ -212,12 +201,12 @@ int ghist_times(char* path_prefix, tracked_file_arr* tracked_files)
 	while (git_revwalk_next(&oid, walker) == 0) {
 		// free previously allocted resources
 		// clang-format off
-                if (commit) { git_commit_free(commit); commit = NULL; }
-                if (parent) { git_commit_free(parent); parent = NULL; }
-                if (tree) { git_tree_free(tree); tree = NULL; }
-                if (parent_tree) { git_tree_free(parent_tree); parent_tree = NULL; }
-                if (diff) { git_diff_free(diff); diff = NULL; }
-                if (find_opts) { free(find_opts); find_opts = NULL; }
+        if (commit) { git_commit_free(commit); commit = NULL; }
+        if (parent) { git_commit_free(parent); parent = NULL; }
+        if (tree) { git_tree_free(tree); tree = NULL; }
+        if (parent_tree) { git_tree_free(parent_tree); parent_tree = NULL; }
+        if (diff) { git_diff_free(diff); diff = NULL; }
+        if (find_opts) { free(find_opts); find_opts = NULL; }
 		// clang-format on
 
 		if (git_commit_lookup(&commit, repo, &oid))
@@ -242,7 +231,10 @@ int ghist_times(char* path_prefix, tracked_file_arr* tracked_files)
 		if (git_diff_tree_to_tree(&diff, repo, parent_tree, tree, NULL))
 			goto git_error;
 
-		find_opts = malloc(sizeof(git_diff_find_options));
+		if (!(find_opts = malloc(sizeof(git_diff_find_options)))) {
+			ERROR(SITE_ERROR_MEMORY_ALLOCATION);
+			return -1;
+		};
 		if (git_diff_find_options_init(find_opts, GIT_DIFF_FIND_OPTIONS_VERSION)) {
 			goto git_error;
 		}
@@ -273,15 +265,15 @@ int ghist_times(char* path_prefix, tracked_file_arr* tracked_files)
 		git_time_t creation_time = 0;
 		git_time_t last_rename_time = 0;
 		if (__trace_rename(
-			tracked_files->files[i].file_path, &creation_time, &last_rename_time,
+			tracked_files->items[i].file_path, &creation_time, &last_rename_time,
 			tracked_files)) {
 			goto error;
 		};
 		if (creation_time > 0) {
-			tracked_files->files[i].creat_time = creation_time;
+			tracked_files->items[i].creat_time = creation_time;
 		}
 		if (last_rename_time > 0) {
-			tracked_files->files[i].mod_time = last_rename_time;
+			tracked_files->items[i].mod_time = last_rename_time;
 		}
 	}
 
@@ -315,10 +307,10 @@ cleanup:
 
 	for (int i = 0; i < renamed_files.len; i++) {
 		// Free both old_path and new_path since strdup() created copies
-		free(renamed_files.records[i].old_path);
-		free(renamed_files.records[i].new_path);
+		free(renamed_files.items[i].old_path);
+		free(renamed_files.items[i].new_path);
 	}
-	free(renamed_files.records);
+	free(renamed_files.items);
 	renamed_files = (renamed_file_arr) { 0 };
 
 	return res;
