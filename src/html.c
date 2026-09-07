@@ -16,9 +16,9 @@
 #include "page.h"
 
 // global template content
-char* site_head = NULL;
-char* site_header = NULL;
-char* site_footer = NULL;
+static char* site_head = NULL;
+static char* site_header = NULL;
+static char* site_footer = NULL;
 
 // shared template building blocks
 static int __html_parse_block(const char* block_path, htm_block* block)
@@ -62,6 +62,8 @@ static int __html_parse_block(const char* block_path, htm_block* block)
 
 	block_content[bytes_read] = '\0';
 
+	printf("%s\n\n\n", block_content);
+
 	// success - transfer ownership to caller
 	block->content = block_content;
 	block->len = bytes_read;
@@ -88,8 +90,10 @@ int html_init_templates(void)
 	htm_block footer_block = { 0 };
 
 	// load head (required)
-	if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/head.htm", &head_block) != 0) {
-		goto error;
+	if (access(_SITE_BLOCK_DIR_PATH "/head.htm", F_OK) == 0) {
+		if (__html_parse_block(_SITE_BLOCK_DIR_PATH "/head.htm", &head_block) != 0) {
+			goto error;
+		}
 	}
 
 	// load header (optional)
@@ -139,102 +143,11 @@ void html_cleanup_templates(void)
 	}
 }
 
-// package content
-static char* __html_create_content(
-    FILE* dest_file,
-    page_entry* entry,
-    char* content,
-    char* additional_content)
-{
-	bool include_title = entry->headers.include_title;
-	bool include_date = entry->headers.include_date;
-
-	size_t buf_size = 48 * 1024;
-	char* buf = NULL;
-	if ((buf = malloc(buf_size)) == NULL) {
-		ERROR(SITE_ERROR_MEMORY_ALLOCATION)
-		return NULL;
-	}
-
-	int fprintf_ret = 0;
-
-	fprintf_ret = fprintf(dest_file, "%s\n", "");
-
-	if (include_title) {
-		fprintf_ret = fprintf(dest_file, "<h1>%s</h1>\n", entry->headers.title);
-	}
-
-	if (include_date) {
-		char created_date[256];
-		char created_formatted_date[256];
-		if (entry->meta.created) {
-			ghist_format_ts("%Y-%m-%d", created_date, entry->meta.created);
-			ghist_format_ts("%b %m, %Y", created_formatted_date, entry->meta.modified);
-		} else {
-			snprintf(
-			    created_formatted_date, sizeof(created_formatted_date), "%s", "DRAFT");
-		}
-
-		// add updated date at the end if present
-		int has_modified = entry->meta.modified != 0;
-		if (has_modified) {
-			char modified_date[256];
-			char modified_formatted_date[256];
-			ghist_format_ts("%Y-%m-%d", modified_date, entry->meta.modified);
-			ghist_format_ts("%b %m, %Y", modified_formatted_date, entry->meta.modified);
-			fprintf_ret = fprintf(
-			    dest_file,
-			    // clang-format off
-                                  "<div id=\"post-date\">\n"
-                                      "<div id=\"date-created\">\n"
-                                          "<time datetime=\"%s\">%s</time>\n"
-                                      "</div>\n"
-                                      "<div id=\"date-updated\">\n"
-                                          "<time datetime=\"%s\">%s</time>\n"
-                                      "</div>\n"
-                                  "</div>\n",
-			    // clang-format on
-			    created_date, created_formatted_date, modified_date,
-			    modified_formatted_date);
-		} else {
-			fprintf_ret = fprintf(
-			    dest_file,
-			    // clang-format off
-                                  "<div id=\"post-date\">\n"
-                                      "<div id=\"date-created\">\n"
-                                          "%s\n"
-                                      "</div>\n"
-                                  "</div>\n",
-			    // clang-format on
-			    created_formatted_date);
-		}
-	}
-
-	// add content
-	fprintf_ret = fprintf(dest_file, "%s", content);
-
-	// add additional content if provided
-	if (additional_content) {
-		fprintf_ret = fprintf(dest_file, "%s", additional_content);
-	}
-
-	// close main content
-	fprintf_ret = fprintf(dest_file, "%s\n", "");
-
-	if (fprintf_ret < 0) {
-		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
-		return NULL;
-	}
-
-	return buf;
-}
-
 // create plain html file
 int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 {
 	int res = 0;
 
-	char* html_content = NULL;
 	char* escaped_title = NULL;
 	char* escaped_description = NULL;
 
@@ -258,76 +171,124 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	fprintf_ret = fprintf(
 	    dest_file,
 	    "<!DOCTYPE html>"
-	    "<html lang=\"en\">\n"
-	    "<head>\n"
-	    "    <title>%s</title>\n"
-	    "    %s%s%s",
+	    "<html lang=\"en\">"
+	    "<head>"
+	    "<title>%s</title>"
+	    "%s%s%s",
 	    escaped_title,
 
-	    escaped_description ? "<meta name=\"description\" content=\"" : "",
-	    escaped_description ? escaped_description : "", escaped_description ? "\">\n" : "");
+	    escaped_description ? "<meta name=\"description\"content=\"" : "",
+	    escaped_description ? escaped_description : "", escaped_description ? "\">" : "");
 
 	fprintf_ret = fprintf(
 	    dest_file,
 
-	    "    <link href=\"/feed.atom\" type=\"application/atom+xml\" rel=\"alternate\" />"
-	    "    %s"     // default style sheet
-	    "    %s%s%s" // custom style sheet
-	    "    %s"     // custom head content
-	    "</head>\n",
+	    "<link href=\"/feed.atom\"type=\"application/atom+xml\"rel=\"alternate\"/>"
+	    "%s"     // default style sheet
+	    "%s%s%s" // custom style sheet
+	    "%s"     // custom head content
+	    "</head>",
 
 	    entry->headers.include_styles
-		? "<link rel=\"stylesheet\" href=\"/style.css\" type=\"text/css\">\n"
+		? "<link rel=\"stylesheet\"href=\"/style.css\"type=\"text/css\">"
 		: "",
 
-	    entry->headers.stylesheet ? "<link rel=\"stylesheet\" href=\"" : "",
+	    entry->headers.stylesheet ? "<link rel=\"stylesheet\"href=\"" : "",
 	    entry->headers.stylesheet ? entry->headers.stylesheet : "",
-	    entry->headers.stylesheet ? "\" type=\"text/css\">\n" : "", site_head);
+	    entry->headers.stylesheet ? "\"type=\"text/css\">" : "",
+
+	    site_head);
 
 	// wrapper class(es)
 	fprintf_ret = fprintf(
 	    dest_file,
-	    "<body>\n"
-	    "    <div id=\"wrap\" class=\"%s%s%s\">\n",
+	    "<body>"
+	    "<div id=\"wrap\"class=\"%s%s%s\">",
 	    entry->headers.is_post ? "post" : "",
 
-	    entry->headers.class ? " " : "", entry->headers.class ? entry->headers.class : "");
+	    entry->headers.class ? "" : "", entry->headers.class ? entry->headers.class : "");
 
 	// header tag
 	fprintf_ret = fprintf(
 	    dest_file,
-	    "        %s"
-	    "        <main>\n",
+	    "%s"
+	    "<main>",
 	    entry->headers.include_header && site_header ? site_header : "");
 
-	// write content
-	if ((html_content = __html_create_content(
-		 dest_file, entry, plain_content,
-		 NULL // no additional content
-		 ))
-	    == NULL) {
+	if (entry->headers.is_post) {
+		fprintf_ret = fprintf(dest_file, "<article>");
+	}
+
+	size_t buf_size = 48 * 1024;
+	char* buf = NULL;
+	if ((buf = malloc(buf_size)) == NULL) {
+		ERROR(SITE_ERROR_MEMORY_ALLOCATION)
 		goto error;
 	}
 
+	// title?
+	if (entry->headers.include_title) {
+		fprintf_ret = fprintf(dest_file, "<h1>%s</h1>", entry->headers.title);
+	}
+
+	// date(s)?
+	if (entry->headers.include_date) {
+		char created_date[256];
+		char created_formatted_date[256];
+		if (entry->meta.created) {
+			ghist_format_ts("%Y-%m-%d", created_date, entry->meta.created);
+			ghist_format_ts("%b %m, %Y", created_formatted_date, entry->meta.modified);
+		} else {
+			snprintf(
+			    created_formatted_date, sizeof(created_formatted_date), "%s", "DRAFT");
+		}
+
+		// add updated date at the end if present
+		int has_modified = entry->meta.modified != 0;
+		if (has_modified) {
+			char modified_date[256];
+			char modified_formatted_date[256];
+			ghist_format_ts("%Y-%m-%d", modified_date, entry->meta.modified);
+			ghist_format_ts("%b %m, %Y", modified_formatted_date, entry->meta.modified);
+			fprintf_ret = fprintf(
+			    dest_file,
+			    "<div id=\"post-date\">"
+			    "<div id=\"date-created\">"
+			    "<time datetime=\"%s\">%s</time>"
+			    "</div>"
+			    "<div id=\"date-updated\">"
+			    "<time datetime=\"%s\">%s</time>"
+			    "</div>"
+			    "</div>",
+			    created_date, created_formatted_date, modified_date,
+			    modified_formatted_date);
+		} else {
+			fprintf_ret = fprintf(
+			    dest_file,
+			    "<div id=\"post-date\">"
+			    "<div id=\"date-created\">"
+			    "<time>%s</time>"
+			    "</div>"
+			    "</div>",
+			    created_formatted_date);
+		}
+	}
+
+	// write content
+	fprintf_ret = fprintf(dest_file, "%s", plain_content);
+
 	if (entry->headers.is_post) {
-		fprintf_ret = fprintf(
-		    dest_file,
-		    "           <article>\n"
-		    "               %s\n"
-		    "           </article>\n",
-		    html_content);
-	} else {
-		fprintf_ret = fprintf(dest_file, "%s\n", html_content);
+		fprintf_ret = fprintf(dest_file, "</article>");
 	}
 
 	// close html
 	fprintf_ret = fprintf(
 	    dest_file,
-	    "        </main>\n"
-	    "        %s"
-	    "    </div>\n"
-	    "</body>\n"
-	    "</html>\n",
+	    "</main>"
+	    "%s"
+	    "</div>"
+	    "</body>"
+	    "</html>",
 	    entry->headers.include_footer && site_footer ? site_footer : "");
 
 	if (fprintf_ret < 0) {
@@ -345,7 +306,6 @@ cleanup:
 		fclose(dest_file);
 	}
 
-	free(html_content);
 	free(escaped_title);
 	free(escaped_description);
 
