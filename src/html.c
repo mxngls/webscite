@@ -62,8 +62,6 @@ static int __html_parse_block(const char* block_path, htm_block* block)
 
 	block_content[bytes_read] = '\0';
 
-	printf("%s\n\n\n", block_content);
-
 	// success - transfer ownership to caller
 	block->content = block_content;
 	block->len = bytes_read;
