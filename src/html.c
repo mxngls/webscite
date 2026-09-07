@@ -217,13 +217,6 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 		fprintf(dest_file, "<article>");
 	}
 
-	size_t buf_size = 48 * 1024;
-	char* buf = NULL;
-	if ((buf = malloc(buf_size)) == NULL) {
-		ERROR(SITE_ERROR_MEMORY_ALLOCATION)
-		goto error;
-	}
-
 	// title?
 	if (entry->headers.include_title) {
 		fprintf(dest_file, "<h1>%s</h1>", entry->headers.title);
