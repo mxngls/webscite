@@ -158,8 +158,6 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 		goto error;
 	}
 
-	int fprintf_ret = 0;
-
 	if (html_escape_content(entry->headers.title, &escaped_title)) {
 		goto error;
 	}
@@ -168,7 +166,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	};
 
 	// page title (and possibly it's description)
-	fprintf_ret = fprintf(
+	fprintf(
 	    dest_file,
 	    "<!DOCTYPE html>"
 	    "<html lang=\"en\">"
@@ -180,7 +178,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	    escaped_description ? "<meta name=\"description\"content=\"" : "",
 	    escaped_description ? escaped_description : "", escaped_description ? "\">" : "");
 
-	fprintf_ret = fprintf(
+	fprintf(
 	    dest_file,
 
 	    "<link href=\"/feed.atom\"type=\"application/atom+xml\"rel=\"alternate\"/>"
@@ -200,7 +198,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	    site_head);
 
 	// wrapper class(es)
-	fprintf_ret = fprintf(
+	fprintf(
 	    dest_file,
 	    "<body>"
 	    "<div id=\"wrap\"class=\"%s%s%s\">",
@@ -209,14 +207,14 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	    entry->headers.class ? "" : "", entry->headers.class ? entry->headers.class : "");
 
 	// header tag
-	fprintf_ret = fprintf(
+	fprintf(
 	    dest_file,
 	    "%s"
 	    "<main>",
 	    entry->headers.include_header && site_header ? site_header : "");
 
 	if (entry->headers.is_post) {
-		fprintf_ret = fprintf(dest_file, "<article>");
+		fprintf(dest_file, "<article>");
 	}
 
 	size_t buf_size = 48 * 1024;
@@ -228,7 +226,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 
 	// title?
 	if (entry->headers.include_title) {
-		fprintf_ret = fprintf(dest_file, "<h1>%s</h1>", entry->headers.title);
+		fprintf(dest_file, "<h1>%s</h1>", entry->headers.title);
 	}
 
 	// date(s)?
@@ -250,7 +248,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 			char modified_formatted_date[256];
 			ghist_format_ts("%Y-%m-%d", modified_date, entry->meta.modified);
 			ghist_format_ts("%b %m, %Y", modified_formatted_date, entry->meta.modified);
-			fprintf_ret = fprintf(
+			fprintf(
 			    dest_file,
 			    "<div id=\"post-date\">"
 			    "<div id=\"date-created\">"
@@ -263,7 +261,7 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 			    created_date, created_formatted_date, modified_date,
 			    modified_formatted_date);
 		} else {
-			fprintf_ret = fprintf(
+			fprintf(
 			    dest_file,
 			    "<div id=\"post-date\">"
 			    "<div id=\"date-created\">"
@@ -275,14 +273,14 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	}
 
 	// write content
-	fprintf_ret = fprintf(dest_file, "%s", plain_content);
+	fprintf(dest_file, "%s", plain_content);
 
 	if (entry->headers.is_post) {
-		fprintf_ret = fprintf(dest_file, "</article>");
+		fprintf(dest_file, "</article>");
 	}
 
 	// close html
-	fprintf_ret = fprintf(
+	fprintf(
 	    dest_file,
 	    "</main>"
 	    "%s"
@@ -291,8 +289,10 @@ int html_create_page(page_entry* entry, char* plain_content, char* output_path)
 	    "</html>",
 	    entry->headers.include_footer && site_footer ? site_footer : "");
 
-	if (fprintf_ret < 0) {
-		ERRORF(SITE_ERROR_FILE_WRITE, dest_file);
+	// stdio latches write errors on the stream, so one check covers every
+	// fprintf above
+	if (ferror(dest_file)) {
+		ERRORF(SITE_ERROR_FILE_WRITE, output_path);
 		goto error;
 	}
 
